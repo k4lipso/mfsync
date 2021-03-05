@@ -13,6 +13,10 @@ option(USE_SUBMODULES "built using submodules. this is only needed when building
 find_package(Threads REQUIRED)
 find_package(SQLite3 REQUIRED)
 
+if(NOT TARGET spdlog)
+    find_package(spdlog REQUIRED)
+endif()
+
 SET(Boost_USE_MULTITHREAD ON)
 FIND_PACKAGE(Boost 1.71.0 REQUIRED COMPONENTS program_options system thread regex filesystem)
 
@@ -20,8 +24,7 @@ message("Boost information")
 message("Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
 message("Boost_LIBRARY_DIRS: ${Boost_LIBRARY_DIRS}")
 message("Boost Libraries: ${Boost_LIBRARIES}")
-message("PROTOBUF INCLUDE DIRS ${PROTOBUF_INCLUDE_DIRS}")
-message("PROTOBUF LIBRARIES ${PROTOBUF_LIBRARIES}")
+
 
 #add_library(libmdump
 #    )
@@ -61,8 +64,9 @@ target_include_directories(mdump
 )
 
 target_link_libraries(mdump
-    PUBLIC
+    PRIVATE
         Boost::program_options
+	spdlog::spdlog
 	#libmdump
 )
 
