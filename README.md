@@ -6,20 +6,20 @@
 mfsync sync 8000 destination
 ```
 
-  * syncs all awailable files and listens on port 8000
+  * syncs all available files and listens on port 8000
   * this mode runs forever
 
 ```
 mfsync share 8000 destination
 ```
-  * shares all awailable files but does not download new ones
+  * shares all available files but does not download new ones
   * this mode runs forever
 
 ```
 mfsync add 8000 /path/to/file
 ```
-  * add file to local running "mfsync sync" instance on port 8000
-  * those will then be multicasted to other mfsync instances on the network
+  * add file to local running "mfsync sync"/"mfsync share" instance on port 8000
+  * those will then be multicasted to other mfsync instances on the network by the according mfsync instance
 
 ```
 mfsync fetch
