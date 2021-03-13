@@ -6,5 +6,5 @@ stdenv.mkDerivation {
   src = ./.;
   nativeBuildInputs = [ sqlite_modern_cpp pkgconfig cmake gnumake gdb ];
   depsBuildBuild = [ ];
-  buildInputs = [ spdlog sqlite boost boost-build doxygen catch2 ];
+  buildInputs = [ spdlog sqlite openssl boost boost-build doxygen catch2 ];
 }

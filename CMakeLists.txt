@@ -12,9 +12,11 @@ option(USE_SUBMODULES "built using submodules. this is only needed when building
 
 find_package(Threads REQUIRED)
 find_package(SQLite3 REQUIRED)
+find_package(SQLite3 REQUIRED)
+find_package(OpenSSL REQUIRED COMPONENTS SSL Crypto EXACT)
 
 if(NOT TARGET spdlog)
-    find_package(spdlog REQUIRED)
+  find_package(spdlog REQUIRED)
 endif()
 
 SET(Boost_USE_MULTITHREAD ON)
@@ -57,17 +59,22 @@ message("Boost Libraries: ${Boost_LIBRARIES}")
 #    -DBOOST_LOG_DYN_LINK
 #    )
 
-add_executable(mdump src/main.cpp)
+add_executable(mdump
+  src/main.cpp
+  src/file_handler.cpp
+  )
 
 target_include_directories(mdump
-    PUBLIC
+  PRIVATE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    ${OPENSSL_INCLUDE_DIR}
 )
 
 target_link_libraries(mdump
-    PRIVATE
-        Boost::program_options
-	spdlog::spdlog
-	#libmdump
+  PRIVATE
+    Boost::program_options
+    spdlog::spdlog
+    ${OPENSSL_LIBRARIES}
 )
 
 target_compile_options(mdump
@@ -76,7 +83,7 @@ target_compile_options(mdump
   )
 
 if(BUILD_TESTS)
-    add_subdirectory(test)
+  add_subdirectory(test)
 endif()
 
 
