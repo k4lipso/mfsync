@@ -1,8 +1,10 @@
 #include "mfsync/file_handler.h"
 
+#include <fstream>
+#include <cstdio>
+
 #include "spdlog/spdlog.h"
 #include "openssl/sha.h"
-#include <fstream>
 
 namespace mfsync
 {
@@ -40,37 +42,41 @@ namespace mfsync
   {
     if(!std::filesystem::is_regular_file(path))
     {
-      spdlog::debug("sha256sum generation failed, path doesnt point to a regular file");
+      spdlog::debug("sha256sum generation failed, path doesnt point to a regular file. path was: {}",
+                    path.c_str());
+
       return std::nullopt;
     }
 
-    FILE *file = fopen(path.c_str(), "rb");
-    if(!file) return std::nullopt;
+    std::ifstream file{path.c_str(), std::ios::binary | std::ios::in};
 
-    unsigned char hash[SHA256_DIGEST_LENGTH];
+    if(!file)
+    {
+      spdlog::debug("failed to open file: {}", path.c_str());
+      return std::nullopt;
+    }
+
     SHA256_CTX sha256;
     SHA256_Init(&sha256);
-    const int bufSize = 32768;
-    unsigned char *buffer = reinterpret_cast<unsigned char*>(malloc(bufSize));
-    int bytesRead = 0;
-    if(!buffer) return std::nullopt;
-    while((bytesRead = fread(buffer, 1, bufSize, file)))
+
+    std::array<char, 0x8012> input_buffer;
+    while(file.peek() != EOF)
     {
-        SHA256_Update(&sha256, buffer, bytesRead);
+      const auto bytes_read = file.readsome(input_buffer.data(), input_buffer.size());
+      SHA256_Update(&sha256, input_buffer.data(), bytes_read);
     }
-    SHA256_Final(hash, &sha256);
 
-    std::array<char, 65> outputBuffer;
+    std::array<uint8_t, SHA256_DIGEST_LENGTH> hash;
+    SHA256_Final(hash.data(), &sha256);
 
+    std::array<char, 65> output_buffer;
     for(int i = 0; i < SHA256_DIGEST_LENGTH; ++i)
     {
-        sprintf(outputBuffer.data() + (i * 2), "%02x", hash[i]);
+        std::sprintf(output_buffer.data() + (i * 2), "%02x", hash[i]);
     }
-    outputBuffer[64] = 0;
+    output_buffer[64] = 0;
 
-    fclose(file);
-    free(buffer);
-    return std::string{outputBuffer.data(), 65};
+    return std::string{output_buffer.data(), 65};
   }
 
   file_handler::file_handler(std::string storage_path)
