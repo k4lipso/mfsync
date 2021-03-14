@@ -46,15 +46,26 @@ namespace mfsync
 
   struct available_file
   {
-    bool operator<(const available_file& rhs) const
-    {
-      return file_info < rhs.file_info;
-    }
-
     file_information file_info;
     boost::asio::ip::address source_address;
     unsigned short source_port;
   };
+
+  inline bool operator<(const available_file& available, const std::string& sha256sum)
+  {
+    return available.file_info < sha256sum;
+  }
+
+  inline bool operator<(const std::string& sha256sum, const available_file& available)
+  {
+    return sha256sum < available.file_info;
+  }
+
+  inline bool operator<(const available_file& lhs, const available_file& rhs)
+  {
+    return lhs.file_info < rhs.file_info;
+  }
+
 
   class file_handler
   {
@@ -65,8 +76,11 @@ namespace mfsync
     file_handler(std::string storage_path);
 
     bool can_be_stored(const file_information& file_info) const;
+    bool is_available(const std::string& sha256sum) const;
+    void remove_available_file(const available_file& file);
+    std::optional<available_file> get_available_file(const std::string& sha256sum) const;
     void add_available_file(available_file file);
-    std::set<file_information, std::less<>> get_stored_files() const;
+    std::set<file_information, std::less<>> get_stored_files();
 
     std::condition_variable& get_cv_new_available_files();
 
@@ -76,8 +90,9 @@ namespace mfsync
     void add_stored_file(file_information file);
     bool stored_file_exists(const file_information& file) const;
     bool stored_file_exists(const std::string& sha256sum) const;
+    std::filesystem::path get_path_to_stored_file(const file_information& file_info) const;
 
-    std::string storage_path_;
+    std::filesystem::path storage_path_;
     std::set<file_information, std::less<>> stored_files_;
     std::set<file_information> locked_files_;
     std::set<available_file, std::less<>> available_files_;

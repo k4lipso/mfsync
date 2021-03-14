@@ -81,13 +81,39 @@ namespace mfsync
 
   file_handler::file_handler(std::string storage_path)
     : storage_path_{std::move(storage_path)}
-  {}
+  {
+    update_stored_files();
+  }
 
   bool file_handler::can_be_stored(const file_information& file_info) const
   {
     static_cast<void>(file_info);
     //TODO: check if enough space for storing
     return true;
+  }
+
+  bool file_handler::is_available(const std::string& sha256sum) const
+  {
+    std::scoped_lock lk{mutex_};
+    return available_files_.contains(sha256sum);
+  }
+
+  void file_handler::remove_available_file(const available_file& file)
+  {
+    available_files_.erase(file);
+  }
+
+  std::optional<available_file> file_handler::get_available_file(const std::string& sha256sum) const
+  {
+    std::scoped_lock lk{mutex_};
+    const auto it = available_files_.find(sha256sum);
+
+		if(it != available_files_.end())
+		{
+			return *it;
+		}
+
+    return std::nullopt;
   }
 
   void file_handler::add_available_file(available_file file)
@@ -98,9 +124,10 @@ namespace mfsync
     cv_new_available_file_.notify_all();
   }
 
-  std::set<file_information, std::less<>> file_handler::get_stored_files() const
+  std::set<file_information, std::less<>> file_handler::get_stored_files()
   {
     std::scoped_lock lk{mutex_};
+    update_stored_files();
     return stored_files_;
   }
 
@@ -117,12 +144,12 @@ namespace mfsync
       return false;
     }
 
-		spdlog::debug("updating storage. target directory: {}", storage_path_);
+    std::erase_if(stored_files_, [this](const auto& file_info)
+      { return !std::filesystem::exists(get_path_to_stored_file(file_info));});
+
 		for(const auto &entry : std::filesystem::directory_iterator(storage_path_))
 		{
 			const std::string name = entry.path().filename().string();
-
-			spdlog::debug("adding {}", name);
 
 			auto file_info = file_information::create_file_information(entry.path());
 
@@ -135,13 +162,22 @@ namespace mfsync
 			add_stored_file(std::move(file_info.value()));
 		}
 
-    spdlog::debug("done updating storage");
     return true;
   }
 
   void file_handler::add_stored_file(file_information file)
   {
-    stored_files_.insert(std::move(file));
+    const auto result = stored_files_.insert(std::move(file));
+
+    if(std::get<1>(result))
+    {
+      spdlog::info("added file to storage. name: {}, sha256: {}", (*std::get<0>(result)).file_name,
+                                                                  (*std::get<0>(result)).sha256sum);
+    }
+    else
+    {
+      spdlog::debug("file already exists");
+    }
   }
 
   bool file_handler::stored_file_exists(const file_information& file) const
@@ -152,5 +188,12 @@ namespace mfsync
   bool file_handler::stored_file_exists(const std::string& file) const
   {
     return stored_files_.contains(file);
+  }
+
+  std::filesystem::path file_handler::get_path_to_stored_file(const file_information& file_info) const
+  {
+    auto path = storage_path_;
+    path /= file_info.file_name;
+    return path;
   }
 }
