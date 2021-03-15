@@ -62,6 +62,7 @@ message("Boost Libraries: ${Boost_LIBRARIES}")
 add_executable(mdump
   src/main.cpp
   src/file_handler.cpp
+  src/file_sender.cpp
   )
 
 target_include_directories(mdump
