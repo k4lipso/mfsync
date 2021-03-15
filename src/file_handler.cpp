@@ -3,6 +3,8 @@
 #include <fstream>
 #include <cstdio>
 
+#include "boost/lexical_cast.hpp"
+
 #include "spdlog/spdlog.h"
 #include "openssl/sha.h"
 
@@ -85,6 +87,17 @@ namespace mfsync
     update_stored_files();
   }
 
+  void file_handler::init_storage(std::string storage_path)
+  {
+    if(!storage_path_.empty())
+    {
+      spdlog::debug("calling init_storage on already initialized storage_path_");
+    }
+
+    storage_path_ = std::move(storage_path);
+    update_stored_files();
+  }
+
   bool file_handler::can_be_stored(const file_information& file_info) const
   {
     static_cast<void>(file_info);
@@ -100,6 +113,7 @@ namespace mfsync
 
   void file_handler::remove_available_file(const available_file& file)
   {
+    std::scoped_lock lk{mutex_};
     available_files_.erase(file);
   }
 
@@ -119,9 +133,44 @@ namespace mfsync
   void file_handler::add_available_file(available_file file)
   {
     std::unique_lock lk{mutex_};
-    available_files_.insert(std::move(file));
+    const auto it_bool_pair = available_files_.insert(std::move(file));
     lk.unlock();
-    cv_new_available_file_.notify_all();
+
+    if(std::get<1>(it_bool_pair))
+    {
+      cv_new_available_file_.notify_all();
+    }
+  }
+
+  void file_handler::add_available_files(available_files available)
+  {
+    std::unique_lock lk{mutex_};
+    bool changed = false;
+
+    for(auto& avail : available)
+    {
+      if(stored_files_.contains(avail.file_info))
+      {
+        continue;
+      }
+
+      const auto it_bool_pair = available_files_.insert(std::move(avail));
+
+      if(std::get<1>(it_bool_pair))
+      {
+        spdlog::info("available: \"{}\" - {} - {}", (*std::get<0>(it_bool_pair)).file_info.file_name,
+                                                    (*std::get<0>(it_bool_pair)).file_info.sha256sum,
+                                                    (*std::get<0>(it_bool_pair)).file_info.size);
+        changed = true;
+      }
+    }
+
+    lk.unlock();
+
+    if(changed)
+    {
+      cv_new_available_file_.notify_all();
+    }
   }
 
   std::set<file_information, std::less<>> file_handler::get_stored_files()
@@ -144,12 +193,25 @@ namespace mfsync
       return false;
     }
 
+    if(!std::filesystem::exists(storage_path_))
+    {
+      spdlog::error("storage path doesnt exist");
+      return false;
+    }
+
     std::erase_if(stored_files_, [this](const auto& file_info)
       { return !std::filesystem::exists(get_path_to_stored_file(file_info));});
 
 		for(const auto &entry : std::filesystem::directory_iterator(storage_path_))
 		{
 			const std::string name = entry.path().filename().string();
+
+			if(std::any_of(stored_files_.begin(), stored_files_.end(),
+										 [&name](const auto& file_info)
+										 {	return name == file_info.file_name; }))
+			{
+				continue;
+			}
 
 			auto file_info = file_information::create_file_information(entry.path());
 
@@ -171,8 +233,9 @@ namespace mfsync
 
     if(std::get<1>(result))
     {
-      spdlog::info("added file to storage. name: {}, sha256: {}", (*std::get<0>(result)).file_name,
-                                                                  (*std::get<0>(result)).sha256sum);
+      spdlog::info("sharing: \"{}\" - {} - {}", (*std::get<0>(result)).file_name,
+                                            (*std::get<0>(result)).sha256sum,
+                                            (*std::get<0>(result)).size);
     }
     else
     {
@@ -182,18 +245,25 @@ namespace mfsync
 
   bool file_handler::stored_file_exists(const file_information& file) const
   {
+    std::scoped_lock lk{mutex_};
     return stored_files_.contains(file);
   }
 
   bool file_handler::stored_file_exists(const std::string& file) const
   {
+    std::scoped_lock lk{mutex_};
     return stored_files_.contains(file);
   }
 
   std::filesystem::path file_handler::get_path_to_stored_file(const file_information& file_info) const
   {
+    if(storage_path_.empty())
+    {
+      spdlog::debug("Called get_path_to_stored_file with empty storage_path_");
+    }
+
     auto path = storage_path_;
     path /= file_info.file_name;
     return path;
   }
-}
+} //closing namespace mfsync
