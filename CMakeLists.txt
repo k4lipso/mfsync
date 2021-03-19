@@ -28,41 +28,11 @@ message("Boost_LIBRARY_DIRS: ${Boost_LIBRARY_DIRS}")
 message("Boost Libraries: ${Boost_LIBRARIES}")
 
 
-#add_library(libmdump
-#    )
-#
-#set_target_properties(libmdump PROPERTIES LINKER_LANGUAGE CXX)
-#
-#target_include_directories(libmdump
-#    PUBLIC
-#    if(USE_SUBMODULES)
-#        "external/sqlite_modern_cpp/hdr"
-#    endif()
-#        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-#        $<INSTALL_INTERFACE:include>
-#        ${Boost_INCLUDE_DIRS}
-#        "${CMAKE_CURRENT_BINARY_DIR}/include/mdump"
-#    )
-#
-#target_link_libraries(libmdump
-#    PUBLIC
-#        ${CMAKE_THREAD_LIBS_INIT}
-#        Boost::system
-#        Boost::thread
-#        Boost::regex
-#        Boost::filesystem
-#        ${SQLite3_LIBRARIES}
-#    )
-#
-#  target_compile_options(libmdump
-#    PUBLIC
-#    -DBOOST_LOG_DYN_LINK
-#    )
-
 add_executable(mdump
   src/main.cpp
   src/file_handler.cpp
   src/file_sender.cpp
+  src/file_fetcher.cpp
   )
 
 target_include_directories(mdump
