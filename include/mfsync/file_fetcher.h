@@ -7,7 +7,6 @@
 #include "boost/lexical_cast.hpp"
 
 #include "mfsync/file_handler.h"
-#include "mfsync/file_sender.h"
 
 namespace mfsync::multicast
 {

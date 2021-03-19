@@ -1,5 +1,7 @@
 #include "mfsync/file_fetcher.h"
 
+#include "mfsync/protocol.h"
+
 namespace mfsync::multicast
 {
 
