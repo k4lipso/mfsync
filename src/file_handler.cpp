@@ -78,7 +78,7 @@ namespace mfsync
     }
     output_buffer[64] = 0;
 
-    return std::string{output_buffer.data(), 65};
+    return std::string{output_buffer.data(), 64};
   }
 
   file_handler::file_handler(std::string storage_path)
