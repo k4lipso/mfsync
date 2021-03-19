@@ -33,6 +33,7 @@ add_executable(mdump
   src/file_handler.cpp
   src/file_sender.cpp
   src/file_fetcher.cpp
+  src/file_receive_handler.cpp
   src/protocol.cpp
   )
 
