@@ -1,5 +1,6 @@
 #include <iostream>
 #include <memory>
+#include <thread>
 
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
@@ -10,6 +11,7 @@
 #include "mfsync/file_handler.h"
 #include "mfsync/file_sender.h"
 #include "mfsync/file_fetcher.h"
+#include "mfsync/file_receive_handler.h"
 
 namespace po = boost::program_options;
 
@@ -26,6 +28,7 @@ int main(int argc, char **argv)
        "Send stuff and have fun")
 		("receive,r", po::value<std::vector<std::string>>()->multitoken()->composing(),
 			 "Receive stuff and have fun")
+			("request,e", po::value<std::vector<std::string>>()->multitoken()->zero_tokens(), "try download the files with the given hash. if no hash is give all available files are downloaded")
 		("storage,s", po::value<std::string>(), "Path to storage");
 
 	po::variables_map vm;
@@ -41,6 +44,7 @@ int main(int argc, char **argv)
   boost::asio::io_context io_service;
   std::unique_ptr<mfsync::multicast::file_fetcher> fetcher = nullptr;
   std::unique_ptr<mfsync::multicast::file_sender> sender = nullptr;
+  std::unique_ptr<mfsync::file_receive_handler> receiver = nullptr;
   try
   {
 
@@ -101,6 +105,24 @@ int main(int argc, char **argv)
                                      boost::asio::ip::address::from_string(multicast_address),
                                      multicast_port,
                                      &file_handler);
+  }
+
+  if(vm.count("request"))
+  {
+    auto file_hashes = vm["request"].as<std::vector<std::string>>();
+
+    if(file_hashes.empty())
+    {
+      receiver = std::make_unique<mfsync::file_receive_handler>(io_service, &file_handler);
+    }
+    else
+    {
+      receiver = std::make_unique<mfsync::file_receive_handler>(io_service,
+                                                                       &file_handler,
+                                                                       std::move(file_hashes));
+    }
+
+    receiver->get_files();
   }
 
   io_service.run();
