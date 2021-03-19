@@ -39,7 +39,7 @@ namespace mfsync::multicast
       spdlog::debug("From: {}", boost::lexical_cast<std::string>(sender_endpoint_.address()));
 
       auto foo = mfsync::protocol::get_available_files_from_message(std::string(data_, bytes_recvd),
-                                                              sender_endpoint_);
+                                                                    sender_endpoint_);
 
       if(foo.has_value())
       {

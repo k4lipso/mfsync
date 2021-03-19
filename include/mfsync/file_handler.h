@@ -84,7 +84,8 @@ namespace mfsync
     std::optional<available_file> get_available_file(const std::string& sha256sum) const;
     void add_available_file(available_file file);
     void add_available_files(available_files available);
-    std::set<file_information, std::less<>> get_stored_files();
+    stored_files get_stored_files();
+    available_files get_available_files() const;
     std::condition_variable& get_cv_new_available_files();
 
   private:

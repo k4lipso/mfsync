@@ -180,6 +180,12 @@ namespace mfsync
     return stored_files_;
   }
 
+  file_handler::available_files file_handler::get_available_files() const
+  {
+    std::scoped_lock lk{mutex_};
+    return available_files_;
+  }
+
   std::condition_variable& file_handler::get_cv_new_available_files()
   {
     return cv_new_available_file_;
@@ -233,7 +239,7 @@ namespace mfsync
 
     if(std::get<1>(result))
     {
-      spdlog::info("sharing: \"{}\" - {} - {}", (*std::get<0>(result)).file_name,
+      spdlog::debug("adding file to storage: \"{}\" - {} - {}", (*std::get<0>(result)).file_name,
                                             (*std::get<0>(result)).sha256sum,
                                             (*std::get<0>(result)).size);
     }

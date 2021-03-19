@@ -24,7 +24,6 @@ namespace mfsync::multicast
       : endpoint_(multicast_address, multicast_port)
       , socket_(io_service, endpoint_.protocol())
       , timer_(io_service)
-      , message_count_(0)
       , file_handler_(filehandler)
 
     {
@@ -54,7 +53,7 @@ namespace mfsync::multicast
 
     void handle_send_to(const boost::system::error_code& error)
     {
-      if(!error && message_count_ < 100)
+      if(!error)
       {
         timer_.expires_from_now(boost::posix_time::seconds(1));
         timer_.async_wait( std::bind(&file_sender::handle_timeout, this,
@@ -93,7 +92,6 @@ namespace mfsync::multicast
     boost::asio::ip::udp::endpoint endpoint_;
     boost::asio::ip::udp::socket socket_;
     boost::asio::deadline_timer timer_;
-    int message_count_;
     std::string message_;
 
     file_handler* file_handler_;
