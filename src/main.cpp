@@ -1,128 +1,15 @@
 #include <iostream>
+#include <memory>
 
+#include <boost/asio.hpp>
+#include <boost/bind.hpp>
 #include <boost/program_options.hpp>
+
 #include "spdlog/spdlog.h"
 
-
-#include <sstream>
-#include <string>
-#include <thread>
-#include <boost/asio.hpp>
-#include "boost/bind.hpp"
-#include "boost/date_time/posix_time/posix_time_types.hpp"
-
-const short multicast_port = 30001;
-const int max_message_count = 100;
-
-class receiver
-{
-public:
-  receiver(boost::asio::io_service& io_service,
-      const boost::asio::ip::address& listen_address,
-      const boost::asio::ip::address& multicast_address)
-    : socket_(io_service)
-  {
-    // Create the socket so that multiple may be bound to the same address.
-    boost::asio::ip::udp::endpoint listen_endpoint(
-        listen_address, multicast_port);
-    socket_.open(listen_endpoint.protocol());
-    socket_.set_option(boost::asio::ip::udp::socket::reuse_address(true));
-    //socket_.set_option(boost::asio::ip::multicast::enable_loopback(true));
-    socket_.bind(listen_endpoint);
-
-    // Join the multicast group.
-    socket_.set_option(
-        boost::asio::ip::multicast::join_group(multicast_address));
-
-    socket_.async_receive_from(
-        boost::asio::buffer(data_, max_length), sender_endpoint_,
-        boost::bind(&receiver::handle_receive_from, this,
-          boost::asio::placeholders::error,
-          boost::asio::placeholders::bytes_transferred));
-  }
-
-
-  void handle_receive_from(const boost::system::error_code& error,
-      size_t bytes_recvd)
-  {
-    if (!error)
-    {
-      spdlog::info("Received Message: '{}'", std::string(data_, bytes_recvd));
-
-      socket_.async_receive_from(
-          boost::asio::buffer(data_, max_length), sender_endpoint_,
-          boost::bind(&receiver::handle_receive_from, this,
-            boost::asio::placeholders::error,
-            boost::asio::placeholders::bytes_transferred));
-    }
-    else
-    {
-      spdlog::error("Error in handle_receive_from: {}", error.message());
-    }
-  }
-
-private:
-  boost::asio::ip::udp::socket socket_;
-  boost::asio::ip::udp::endpoint sender_endpoint_;
-  enum { max_length = 1024 };
-  char data_[max_length];
-};
-
-class sender
-{
-public:
-  sender(boost::asio::io_service& io_service,
-      const boost::asio::ip::address& multicast_address)
-    : endpoint_(multicast_address, multicast_port),
-      socket_(io_service, endpoint_.protocol()),
-      timer_(io_service),
-      message_count_(0)
-  {
-    std::ostringstream os;
-    os << "Message " << message_count_++;
-    message_ = os.str();
-
-    socket_.async_send_to(
-        boost::asio::buffer(message_), endpoint_,
-        boost::bind(&sender::handle_send_to, this,
-          boost::asio::placeholders::error));
-  }
-
-  void handle_send_to(const boost::system::error_code& error)
-  {
-    if(!error && message_count_ < max_message_count)
-    {
-      timer_.expires_from_now(boost::posix_time::seconds(1));
-      timer_.async_wait(
-          boost::bind(&sender::handle_timeout, this,
-            boost::asio::placeholders::error));
-    }
-  }
-
-  void handle_timeout(const boost::system::error_code& error)
-  {
-    if (!error)
-    {
-      std::ostringstream os;
-      os << "Message " << message_count_++;
-      message_ = os.str();
-
-      spdlog::info("Sending Message: '{}'", message_);
-
-      socket_.async_send_to(
-          boost::asio::buffer(message_), endpoint_,
-          boost::bind(&sender::handle_send_to, this,
-            boost::asio::placeholders::error));
-    }
-  }
-
-private:
-  boost::asio::ip::udp::endpoint endpoint_;
-  boost::asio::ip::udp::socket socket_;
-  boost::asio::deadline_timer timer_;
-  int message_count_;
-  std::string message_;
-};
+#include "mfsync/file_handler.h"
+#include "mfsync/file_sender.h"
+#include "mfsync/file_fetcher.h"
 
 namespace po = boost::program_options;
 
@@ -134,10 +21,12 @@ int main(int argc, char **argv)
 
 	description.add_options()
 		("help,h", "Display help message")
+		("verbose,v", "Show debug logs")
 		("send,s", po::value<std::vector<std::string>>()->multitoken()->composing(),
        "Send stuff and have fun")
 		("receive,r", po::value<std::vector<std::string>>()->multitoken()->composing(),
-       "Receive stuff and have fun");
+			 "Receive stuff and have fun")
+		("storage,s", po::value<std::string>(), "Path to storage");
 
 	po::variables_map vm;
 	po::store(po::command_line_parser(argc, argv).options(description).run(), vm);
@@ -150,10 +39,25 @@ int main(int argc, char **argv)
 	}
 
   boost::asio::io_context io_service;
+  std::unique_ptr<mfsync::multicast::file_fetcher> fetcher = nullptr;
+  std::unique_ptr<mfsync::multicast::file_sender> sender = nullptr;
   try
   {
 
-  if(!vm.count("send") && vm.count("receive"))
+
+  if(vm.count("verbose"))
+  {
+    spdlog::set_level(spdlog::level::debug);
+  }
+  else
+  {
+    spdlog::set_pattern("%v");
+  }
+
+  const short multicast_port = 30001;
+  auto file_handler = mfsync::file_handler{};
+
+  if(vm.count("receive"))
   {
     const auto vec = vm["receive"].as<std::vector<std::string>>();
 
@@ -163,16 +67,22 @@ int main(int argc, char **argv)
       return -1;
     }
 
-    spdlog::info("Starting Receiver");
-    spdlog::info("Listen address {}, Multicast address {}", vec.at(0), vec.at(1));
+    spdlog::debug("Starting Receiver");
+    spdlog::debug("Listen address {}, Multicast address {}", vec.at(0), vec.at(1));
 
-    receiver r(io_service,
-        boost::asio::ip::address::from_string(vec.at(0)),
-        boost::asio::ip::address::from_string(vec.at(1)));
-    io_service.run();
+    fetcher = std::make_unique<mfsync::multicast::file_fetcher>(io_service,
+                                    boost::asio::ip::address::from_string(vec.at(0)),
+                                    boost::asio::ip::address::from_string(vec.at(1)),
+                                    multicast_port,
+                                    &file_handler);
   }
 
-  if(vm.count("send") && !vm.count("receive"))
+  if(vm.count("storage"))
+  {
+    file_handler.init_storage(vm["storage"].as<std::string>());
+  }
+
+  if(vm.count("send"))
   {
     const auto vec = vm["send"].as<std::vector<std::string>>();
 
@@ -184,12 +94,16 @@ int main(int argc, char **argv)
 
     const auto multicast_address = vec.at(0);
 
-    spdlog::info("Starting Sender");
-    spdlog::info("Multicast address: {}", multicast_address);
+    spdlog::debug("Starting Sender");
+    spdlog::debug("Multicast address: {}", multicast_address);
 
-    sender s(io_service, boost::asio::ip::address::from_string(multicast_address));
-    io_service.run();
+    sender = std::make_unique<mfsync::multicast::file_sender>(io_service,
+                                     boost::asio::ip::address::from_string(multicast_address),
+                                     multicast_port,
+                                     &file_handler);
   }
+
+  io_service.run();
 
   }
   catch (std::exception& e)
@@ -199,4 +113,3 @@ int main(int argc, char **argv)
 
   return 0;
 }
-
