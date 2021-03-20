@@ -8,6 +8,7 @@
 #include "spdlog/spdlog.h"
 
 #include "mfsync/file_handler.h"
+#include "mfsync/deque.h"
 
 namespace mfsync
 {
@@ -76,9 +77,10 @@ private:
 
   void request_file(available_file file)
   {
-    if(std::any_of(request_queue_.begin(), request_queue_.end(),
-       [&file](const auto& request_file)
-       { return file.file_info.sha256sum == request_file.file_info.sha256sum; }))
+    auto pred = [&file](const auto& request_file)
+       { return file.file_info.sha256sum == request_file.file_info.sha256sum; };
+
+    if(request_queue_.contains(pred))
     {
       return;
     }
@@ -110,7 +112,7 @@ private:
   boost::asio::deadline_timer timer_;
   mfsync::file_handler* file_handler_;
   std::vector<std::string> files_to_request_;
-  std::deque<available_file> request_queue_;
+  mfsync::concurrent::deque<available_file> request_queue_;
   bool request_all_;
   mutable std::mutex mutex_;
 };
