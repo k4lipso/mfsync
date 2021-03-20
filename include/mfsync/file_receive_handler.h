@@ -70,10 +70,23 @@ public:
       sha256sum = "DONE";
     }
 
+    start_new_session();
     wait_for_new_files();
   }
 
 private:
+
+  void try_start_new_session()
+  {
+    auto available = deque_.try_pop();
+
+    if(!available.has_value())
+    {
+      return;
+    }
+
+    //TODO: create session here
+  }
 
   void request_file(available_file file)
   {
