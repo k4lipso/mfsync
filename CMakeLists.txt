@@ -35,6 +35,7 @@ add_executable(mdump
   src/file_fetcher.cpp
   src/file_receive_handler.cpp
   src/protocol.cpp
+  src/deque.cpp
   )
 
 target_include_directories(mdump
