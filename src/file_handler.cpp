@@ -191,6 +191,13 @@ namespace mfsync
     return cv_new_available_file_;
   }
 
+  std::optional<int> file_handler::create_file(requested_file& requested)
+  {
+    spdlog::info("Calling create_file. function not yet implemented!");
+    requested.offset = 1337;
+    return std::nullopt;
+  }
+
   bool file_handler::update_stored_files()
   {
     if(storage_path_.empty())

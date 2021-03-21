@@ -26,7 +26,21 @@ namespace mfsync
 
     std::string file_name;
     std::string sha256sum;
-    size_t size;
+    size_t size = 0;
+  };
+
+  struct available_file
+  {
+    file_information file_info;
+    boost::asio::ip::address source_address;
+    unsigned short source_port = 0;
+  };
+
+  struct requested_file
+  {
+    file_information file_info;
+    size_t offset = 0;
+    unsigned chunksize = 0;
   };
 
   inline bool operator<(const file_information& file_info, const std::string& sha256sum)
@@ -43,13 +57,6 @@ namespace mfsync
   {
     return lhs.sha256sum < rhs.sha256sum;
   }
-
-  struct available_file
-  {
-    file_information file_info;
-    boost::asio::ip::address source_address;
-    unsigned short source_port;
-  };
 
   inline bool operator<(const available_file& available, const std::string& sha256sum)
   {
@@ -87,6 +94,9 @@ namespace mfsync
     stored_files get_stored_files();
     available_files get_available_files() const;
     std::condition_variable& get_cv_new_available_files();
+
+    //TODO: replace int by ofstreamwrapper
+    std::optional<int> create_file(requested_file& requested);
 
   private:
 
