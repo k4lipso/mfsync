@@ -79,6 +79,7 @@ namespace mfsync
   public:
     using stored_files = std::set<file_information, std::less<>>;
     using available_files = std::set<available_file, std::less<>>;
+    using locked_files = std::vector<std::pair<std::string, std::shared_ptr<std::atomic<bool>>>>;
     file_handler() = default;
     ~file_handler() = default;
 
@@ -108,9 +109,10 @@ namespace mfsync
 
     std::filesystem::path storage_path_;
     stored_files stored_files_;
-    std::set<file_information> locked_files_;
     available_files available_files_;
     std::condition_variable cv_new_available_file_;
+    locked_files locked_files_;
+
 
     mutable std::mutex mutex_;
   };
