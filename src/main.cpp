@@ -45,6 +45,8 @@ int main(int argc, char **argv)
   std::unique_ptr<mfsync::multicast::file_fetcher> fetcher = nullptr;
   std::unique_ptr<mfsync::multicast::file_sender> sender = nullptr;
   std::unique_ptr<mfsync::file_receive_handler> receiver = nullptr;
+  std::unique_ptr<mfsync::filetransfer::server> file_server = nullptr;
+
   try
   {
 
@@ -105,6 +107,12 @@ int main(int argc, char **argv)
                                      boost::asio::ip::address::from_string(multicast_address),
                                      multicast_port,
                                      &file_handler);
+
+    file_server = std::make_unique<mfsync::filetransfer::server>(io_service,
+                                                                 mfsync::protocol::TCP_PORT,
+                                                                 file_handler);
+
+    file_server->run();
   }
 
   if(vm.count("request"))
@@ -118,8 +126,8 @@ int main(int argc, char **argv)
     else
     {
       receiver = std::make_unique<mfsync::file_receive_handler>(io_service,
-                                                                       &file_handler,
-                                                                       std::move(file_hashes));
+                                                                &file_handler,
+                                                                std::move(file_hashes));
     }
 
     receiver->get_files();
