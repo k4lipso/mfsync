@@ -27,8 +27,8 @@ public:
       return std::nullopt;
     }
 
-    auto result = std::make_optional(std::move(*deque_.front.get()));
-    deque_.pop();
+    auto result = std::make_optional(std::move(deque_.front()));
+    deque_.pop_front();
 
     return result;
   }
