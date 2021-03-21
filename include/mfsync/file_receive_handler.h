@@ -1,6 +1,7 @@
 #pragma once
 
 #include <deque>
+#include <memory>
 
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
@@ -78,14 +79,25 @@ private:
 
   void try_start_new_session()
   {
-    auto available = deque_.try_pop();
+    if(!session_.expired())
+    {
+      return;
+    }
+
+    auto available = request_queue_.try_pop();
 
     if(!available.has_value())
     {
       return;
     }
 
-    //TODO: create session here
+    auto session = std::make_shared<mfsync::tcp::filetransfer_session>(io_context_,
+                                                                       std::move(available.value()),
+                                                                       request_queue_,
+                                                                       *file_handler_);
+    session_ = session;
+
+    session->start_request();
   }
 
   void request_file(available_file file)
@@ -122,11 +134,13 @@ private:
     }
   }
 
+  boost::asio::io_context& io_context_;
   boost::asio::deadline_timer timer_;
   mfsync::file_handler* file_handler_;
   std::vector<std::string> files_to_request_;
   mfsync::concurrent::deque<available_file> request_queue_;
   bool request_all_;
+  std::weak_ptr<mfsync::tcp::filetransfer_session> session_;
   mutable std::mutex mutex_;
 };
 
