@@ -10,6 +10,10 @@ namespace mfsync::protocol
 {
   constexpr auto TCP_PORT = 8000;
   constexpr auto MAX_MESSAGE_SIZE = 512;
+  constexpr auto CHUNKSIZE = 1024;
+
+  std::string create_message_from_requested_file(const requested_file& file);
+  std::optional<requested_file> get_requested_file_from_message(const std::string& message);
 
   std::vector<std::string> create_messages_from_file_info(const file_handler::stored_files& file_infos);
 

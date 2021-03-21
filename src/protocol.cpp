@@ -8,6 +8,52 @@
 namespace mfsync::protocol
 {
 
+std::string create_message_from_requested_file(const requested_file& file)
+{
+  std::stringstream message_sstring;
+  message_sstring << "<MFSYNC_HEADER_BEGIN>";
+  message_sstring << file.file_info.file_name << "?";
+  message_sstring << file.file_info.sha256sum << "?";
+  message_sstring << std::to_string(file.file_info.size) << "?";
+  message_sstring << std::to_string(file.offset) << "?";
+  message_sstring << std::to_string(file.chunksize) << "?";
+  message_sstring << "<MFSYNC_HEADER_END>";
+  return message_sstring.str();
+}
+
+std::optional<requested_file> get_requested_file_from_message(const std::string& message)
+{
+  if(message.empty())
+  {
+    spdlog::debug("get_requested_file_from_message on empty message");
+    return std::nullopt;
+  }
+
+  std::string tmp;
+  std::stringstream message_sstring{message};
+  std::vector<std::string> tokens;
+
+  while(std::getline(message_sstring, tmp, '?'))
+  {
+    tokens.push_back(tmp);
+  }
+
+  if(tokens.size() != 5)
+  {
+    spdlog::error("could not generate requested_file out of message");
+    return std::nullopt;
+  }
+
+  requested_file file;
+  file.file_info.file_name = tokens.at(0);
+  file.file_info.sha256sum = tokens.at(1);
+  file.file_info.size = std::stoull(tokens.at(2));
+  file.offset = std::stoull(tokens.at(3));
+  file.chunksize = std::stoi(tokens.at(4));
+
+  return file;
+}
+
 std::vector<std::string> create_messages_from_file_info(const file_handler::stored_files& file_infos)
 {
   std::string message_string;
