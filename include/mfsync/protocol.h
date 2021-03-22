@@ -13,6 +13,9 @@ namespace mfsync::protocol
   constexpr auto CHUNKSIZE = 1024;
   constexpr auto MFSYNC_HEADER_END = "<MFSYNC_HEADER_END>";
 
+  std::string create_begin_transmission_message();
+  std::string create_error_message(const std::string& reason);
+
   std::string create_message_from_requested_file(const requested_file& file);
   std::optional<requested_file> get_requested_file_from_message(const std::string& message);
 
