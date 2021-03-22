@@ -168,10 +168,14 @@ namespace mfsync
     std::condition_variable& get_cv_new_available_files();
 
     //TODO: replace int by ofstreamwrapper
-    std::optional<int> create_file(requested_file& requested);
+    std::optional<mfsync::ofstream_wrapper> create_file(requested_file& requested);
+    bool finalize_file(const mfsync::file_information& file);
+    std::optional<std::ifstream> read_file(const file_information& file_info);
 
   private:
 
+    std::filesystem::path get_tmp_path(const file_information& file_info) const;
+    std::filesystem::path get_storage_path(const file_information& file_info) const;
     bool update_stored_files();
     void add_stored_file(file_information file);
     bool stored_file_exists(const file_information& file) const;

@@ -191,11 +191,137 @@ namespace mfsync
     return cv_new_available_file_;
   }
 
-  std::optional<int> file_handler::create_file(requested_file& requested)
+  std::optional<mfsync::ofstream_wrapper> file_handler::create_file(requested_file& requested)
   {
-    spdlog::info("Calling create_file. function not yet implemented!");
-    requested.offset = 1337;
-    return std::nullopt;
+    const std::string& filename = requested.file_info.file_name;
+
+		std::scoped_lock lk{mutex_};
+		if(exists_internal(filename) || is_blocked_internal(filename))
+		{
+			spdlog::debug("Tried creating existing or locked file");
+			return std::nullopt;
+		}
+
+		//Update FileInfo::offset, this way GetFile::create_request requests with correct offset
+		//if file was partly received before
+		const auto tmp_path = get_tmp_path(requested.file_info);
+		const auto file_exists = std::filesystem::exists(tmp_path);
+
+		if(file_exists)
+		{
+			requested.offset = std::filesystem::file_size(tmp_path);
+			spdlog::debug("setting offset to: {}", requested.offset);
+		}
+
+		ofstream_wrapper output(requested);
+
+		if(file_exists)
+		{
+			output.open(tmp_path.c_str(), std::ios::in|std::ios::out|std::ios::binary);
+		}
+		else
+		{
+			output.open(tmp_path.c_str(), std::ios::out|std::ios::binary);
+		}
+
+
+		if(!output)
+		{
+			spdlog::error("failed to create file");
+			return std::nullopt;
+		}
+
+		output.ofstream_.seekp(requested.offset, output.ofstream_.beg);
+
+		auto token = std::make_shared<std::atomic<bool>>(true);
+		output.set_token(token);
+		locked_files_.emplace_back(requested.file_info, std::move(token));
+
+    return output;
+  }
+
+  bool file_handler::finalize_file(const mfsync::file_information& file)
+  {
+    std::scoped_lock lk{mutex_};
+
+    if(exists_internal(file))
+    {
+      spdlog::debug("Tried finalizing file that already exists");
+      return false;
+    }
+
+    if(!is_blocked_internal(file))
+    {
+      spdlog::debug("Tried finalizing file that was not blocked");
+      return false;
+    }
+
+    const auto& filename = file.file_name;
+
+    const auto tmp_path = get_tmp_path(file);
+    const auto sha256sum = file_information::get_sha256sum(tmp_path);
+
+    if(!sha256sum.has_value())
+    {
+      spdlog::debug("failed to get_sha256sum");
+      return false;
+    }
+
+    if(sha256sum.value() != file.sha256sum)
+    {
+      spdlog::warn("Received file has different sha256sum than requested file! Aborting");
+      return false;
+    }
+
+    spdlog::info("finalizing file: {}", sha256sum.value());
+
+    locked_files_.erase(std::remove_if(locked_files_.begin(), locked_files_.end(),
+                        [&file](const auto& locked_file){ return file == locked_file.first; }),
+                        locked_files_.end());
+
+    std::filesystem::rename(tmp_path, get_storage_path(file));
+    return true;
+  }
+
+	std::optional<std::ifstream> file_handler::read_file(const file_information& file_info)
+	{
+		std::scoped_lock lk{mutex_};
+
+		update_stored_files();
+		if(!stored_file_exists(file_info))
+		{
+			spdlog::debug("Tried reading nonexisting file");
+			return std::nullopt;
+		}
+
+		const std::string& filename = file_info.file_name;
+
+		std::ifstream Input;
+		Input.open(get_storage_path(file_info), std::ios_base::binary | std::ios_base::ate);
+
+		if(!Input)
+		{
+			spdlog::error("Failed to read file");
+			spdlog::error("{}",get_storage_path(file_info).c_str());
+			return std::nullopt;
+		}
+
+		return Input;
+	}
+
+  std::filesystem::path file_handler::get_tmp_path(const file_information& file_info) const
+  {
+    auto tmp_path = storage_path_;
+    tmp_path /= TMP_FOLDER;
+    tmp_path /= file_info.file_name.c_str();
+    return tmp_path;
+  }
+
+  std::filesystem::path file_handler::get_storage_path(const file_information& file_info) const
+  {
+    auto tmp_path = storage_path_;
+    tmp_path /= file_info.file_name.c_str();
+    return tmp_path;
   }
 
   bool file_handler::update_stored_files()
