@@ -1,6 +1,6 @@
 ### multicast file sync -> sync local files on multiple machines
 
-###### commandline examples:
+###### commandline examples (this syntax is not implemented yet):
 
 ```
 mfsync sync 8000 destination
