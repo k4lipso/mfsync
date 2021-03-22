@@ -178,12 +178,19 @@ namespace mfsync
     bool stored_file_exists(const std::string& sha256sum) const;
     std::filesystem::path get_path_to_stored_file(const file_information& file_info) const;
 
+		bool is_blocked_internal(const std::string& name) const;
+		bool is_blocked_internal(const file_information& file_info) const;
+		bool exists_internal(const std::string& name) const;
+		bool exists_internal(const file_information& file_info) const;
+
     std::filesystem::path storage_path_;
+    std::filesystem::path tmp_path_;
     stored_files stored_files_;
     available_files available_files_;
     std::condition_variable cv_new_available_file_;
     locked_files locked_files_;
 
+    static constexpr const char* TMP_FOLDER = ".mfsync/";
 
     mutable std::mutex mutex_;
   };

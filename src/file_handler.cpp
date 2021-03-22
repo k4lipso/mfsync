@@ -279,4 +279,30 @@ namespace mfsync
     path /= file_info.file_name;
     return path;
   }
+
+	bool file_handler::is_blocked_internal(const std::string& name) const
+	{
+		return std::any_of(locked_files_.begin(), locked_files_.end(),
+											 [&name](const auto& locked_file)
+											 { return locked_file.first.file_name == name && *locked_file.second.get() == true; });
+	}
+
+	bool file_handler::is_blocked_internal(const file_information& file_info) const
+	{
+		return std::any_of(locked_files_.begin(), locked_files_.end(),
+											 [&file_info](const auto& locked_file)
+											 { return locked_file.first == file_info && *locked_file.second.get() == true; });
+	}
+
+	bool file_handler::exists_internal(const std::string& name) const
+	{
+		return std::any_of(stored_files_.begin(), stored_files_.end(),
+											 [&name](const auto& file){ return file.file_name == name; });
+	}
+
+	bool file_handler::exists_internal(const file_information& file_info) const
+	{
+		return stored_files_.contains(file_info);
+	}
+
 } //closing namespace mfsync
