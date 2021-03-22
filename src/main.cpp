@@ -92,13 +92,14 @@ int main(int argc, char **argv)
   {
     const auto vec = vm["send"].as<std::vector<std::string>>();
 
-    if(vec.size() != 1)
+    if(vec.size() != 2)
     {
-      spdlog::error("send mode needs one argument: multicast address");
+      spdlog::error("send mode needs one argument: multicast address and tcp port");
       return -1;
     }
 
     const auto multicast_address = vec.at(0);
+    const auto port = std::stoi(vec.at(1));
 
     spdlog::debug("Starting Sender");
     spdlog::debug("Multicast address: {}", multicast_address);
@@ -109,7 +110,7 @@ int main(int argc, char **argv)
                                      &file_handler);
 
     file_server = std::make_unique<mfsync::filetransfer::server>(io_service,
-                                                                 mfsync::protocol::TCP_PORT,
+                                                                 port,
                                                                  file_handler);
 
     file_server->run();
