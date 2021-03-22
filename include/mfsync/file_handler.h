@@ -159,6 +159,7 @@ namespace mfsync
     void init_storage(std::string storage_path);
     bool can_be_stored(const file_information& file_info) const;
     bool is_available(const std::string& sha256sum) const;
+    bool is_stored(const file_information& file_info) const;
     void remove_available_file(const available_file& file);
     std::optional<available_file> get_available_file(const std::string& sha256sum) const;
     void add_available_file(available_file file);

@@ -105,6 +105,12 @@ namespace mfsync
     return true;
   }
 
+  bool file_handler::is_stored(const file_information& file_info) const
+  {
+    std::scoped_lock lk{mutex_};
+    return stored_files_.contains(file_info);
+  }
+
   bool file_handler::is_available(const std::string& sha256sum) const
   {
     std::scoped_lock lk{mutex_};
