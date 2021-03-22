@@ -77,10 +77,17 @@ namespace mfsync
 	class ofstream_wrapper
 	{
 	public:
+		ofstream_wrapper() = default;
 		ofstream_wrapper(const requested_file& file)
 			: requested_file_(file)
 		{
 		}
+
+		ofstream_wrapper(ofstream_wrapper &&other) = default;
+		ofstream_wrapper(const ofstream_wrapper& other) = delete;
+
+		ofstream_wrapper& operator=(ofstream_wrapper&& other) = default;
+		ofstream_wrapper& operator=(const ofstream_wrapper& other) = delete;
 
 		~ofstream_wrapper()
 		{
@@ -91,9 +98,6 @@ namespace mfsync
 
 			ofstream_.close();
 		}
-
-		ofstream_wrapper(ofstream_wrapper&& other) = default;
-		ofstream_wrapper& operator=(ofstream_wrapper&& other) = default;
 
 		bool operator!() const
 		{
@@ -188,14 +192,16 @@ namespace mfsync
 		bool exists_internal(const std::string& name) const;
 		bool exists_internal(const file_information& file_info) const;
 
+		bool init_tmp_directory();
+
     std::filesystem::path storage_path_;
-    std::filesystem::path tmp_path_;
     stored_files stored_files_;
     available_files available_files_;
     std::condition_variable cv_new_available_file_;
     locked_files locked_files_;
 
-    static constexpr const char* TMP_FOLDER = ".mfsync/";
+    bool tmp_folder_initialized_ = false;
+    static constexpr const char* TMP_FOLDER = ".mfsync";
 
     mutable std::mutex mutex_;
   };
