@@ -52,18 +52,18 @@ std::optional<requested_file> get_requested_file_from_message(const std::string&
     tokens.push_back(tmp);
   }
 
-  if(tokens.size() != 5)
+  if(tokens.size() != 7)
   {
     spdlog::error("could not generate requested_file out of message");
     return std::nullopt;
   }
 
   requested_file file;
-  file.file_info.file_name = tokens.at(0);
-  file.file_info.sha256sum = tokens.at(1);
-  file.file_info.size = std::stoull(tokens.at(2));
-  file.offset = std::stoull(tokens.at(3));
-  file.chunksize = std::stoi(tokens.at(4));
+  file.file_info.file_name = tokens.at(1);
+  file.file_info.sha256sum = tokens.at(2);
+  file.file_info.size = std::stoull(tokens.at(3));
+  file.offset = std::stoull(tokens.at(4));
+  file.chunksize = std::stoi(tokens.at(5));
 
   return file;
 }
