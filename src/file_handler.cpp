@@ -197,12 +197,44 @@ namespace mfsync
     return cv_new_available_file_;
   }
 
+	bool file_handler::init_tmp_directory()
+	{
+		if(tmp_folder_initialized_)
+		{
+			return true;
+		}
+
+    auto tmp_path = storage_path_;
+    tmp_path /= TMP_FOLDER;
+
+    if(std::filesystem::exists(tmp_path))
+    {
+      tmp_folder_initialized_ = true;
+      return true;
+    }
+
+    spdlog::debug("creating tmp_storage directory");
+    if(!std::filesystem::create_directory(tmp_path))
+    {
+      spdlog::error("could not create directoy in given storage path, check permissions");
+      return false;
+    }
+
+		tmp_folder_initialized_ = true;
+		return true;
+	}
+
   std::optional<mfsync::ofstream_wrapper> file_handler::create_file(requested_file& requested)
   {
+    if(!init_tmp_directory())
+    {
+      return std::nullopt;
+    }
+
     const std::string& filename = requested.file_info.file_name;
 
 		std::scoped_lock lk{mutex_};
-		if(exists_internal(filename) || is_blocked_internal(filename))
+		if(exists_internal(requested.file_info) || is_blocked_internal(requested.file_info))
 		{
 			spdlog::debug("Tried creating existing or locked file");
 			return std::nullopt;
@@ -262,8 +294,6 @@ namespace mfsync
       return false;
     }
 
-    const auto& filename = file.file_name;
-
     const auto tmp_path = get_tmp_path(file);
     const auto sha256sum = file_information::get_sha256sum(tmp_path);
 
@@ -286,6 +316,7 @@ namespace mfsync
                         locked_files_.end());
 
     std::filesystem::rename(tmp_path, get_storage_path(file));
+    update_stored_files();
     return true;
   }
 
@@ -294,13 +325,11 @@ namespace mfsync
 		std::scoped_lock lk{mutex_};
 
 		update_stored_files();
-		if(!stored_file_exists(file_info))
+		if(!exists_internal(file_info))
 		{
 			spdlog::debug("Tried reading nonexisting file");
 			return std::nullopt;
 		}
-
-		const std::string& filename = file_info.file_name;
 
 		std::ifstream Input;
 		Input.open(get_storage_path(file_info), std::ios_base::binary | std::ios_base::ate);
@@ -350,6 +379,11 @@ namespace mfsync
 		for(const auto &entry : std::filesystem::directory_iterator(storage_path_))
 		{
 			const std::string name = entry.path().filename().string();
+
+			if(name == TMP_FOLDER)
+			{
+				continue;
+			}
 
 			if(std::any_of(stored_files_.begin(), stored_files_.end(),
 										 [&name](const auto& file_info)
