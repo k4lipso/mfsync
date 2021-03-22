@@ -53,10 +53,10 @@ public:
       // received data is "committed" from output sequence to input sequence
       stream_buffer_.commit(bytes_transferred);
 
-			std::istream is(&stream_buffer_);
-			//std::string message;
-			std::string message(std::istreambuf_iterator<char>(is), {});
-			//is >> message;
+      std::istream is(&stream_buffer_);
+      //std::string message;
+      std::string message(std::istreambuf_iterator<char>(is), {});
+      //is >> message;
 
       //boost::asio::streambuf::const_buffers_type bufs = stream_buffer_.data();
       //std::string message(
@@ -148,37 +148,37 @@ public:
 
     auto source_file = file_handler_.read_file(requested_.file_info);
 
-		if(!source_file.has_value())
-		{
-			spdlog::error("Cant read file");
-			//handle_error();
-			return;
-		}
+    if(!source_file.has_value())
+    {
+      spdlog::error("Cant read file");
+      //handle_error();
+      return;
+    }
 
-		ifstream_ = std::move(source_file.value());
+    ifstream_ = std::move(source_file.value());
 
-		ifstream_.seekg(0, ifstream_.end);
-		const auto file_size = ifstream_.tellg();
-		ifstream_.seekg(requested_.offset, ifstream_.beg);
+    ifstream_.seekg(0, ifstream_.end);
+    const auto file_size = ifstream_.tellg();
+    ifstream_.seekg(requested_.offset, ifstream_.beg);
 
-		spdlog::info("Start sending file: {}", requested_.file_info.file_name);
-		spdlog::debug("FileSize: {}, Sha256sum: {}", file_size, requested_.file_info.sha256sum);
-		write_file();
-	}
+    spdlog::info("Start sending file: {}", requested_.file_info.file_name);
+    spdlog::debug("FileSize: {}, Sha256sum: {}", file_size, requested_.file_info.sha256sum);
+    write_file();
+  }
 
-	void write_file()
-	{
-		if(ifstream_)
-		{
-			writebuf_.resize(requested_.chunksize);
-			ifstream_.read(writebuf_.data(), writebuf_.size());
+  void write_file()
+  {
+    if(ifstream_)
+    {
+      writebuf_.resize(requested_.chunksize);
+      ifstream_.read(writebuf_.data(), writebuf_.size());
 
-			if(ifstream_.fail() && !ifstream_.eof())
-			{
-				spdlog::debug("Failed reading file");
-				//handle_error();
-				return;
-			}
+      if(ifstream_.fail() && !ifstream_.eof())
+      {
+        spdlog::debug("Failed reading file");
+        //handle_error();
+        return;
+      }
 
       async_write(socket_,
         boost::asio::buffer(writebuf_.data(), writebuf_.size()),
@@ -380,24 +380,24 @@ public:
     ofstream_.write(reinterpret_cast<char*>(readbuf_.data()), bytes_transferred, bytes_written_to_requested_);
     bytes_written_to_requested_ += bytes_transferred;
 
-		spdlog::debug("received. bytes written: {} of: {}", ofstream_.tellp(), requested_.file_info.size);
-		if(ofstream_.tellp() < static_cast<std::streamsize>(requested_.file_info.size))
-		{
-			read_file_chunk();
-			return;
-		}
+    spdlog::debug("received. bytes written: {} of: {}", ofstream_.tellp(), requested_.file_info.size);
+    if(ofstream_.tellp() < static_cast<std::streamsize>(requested_.file_info.size))
+    {
+      read_file_chunk();
+      return;
+    }
 
-		spdlog::info("received file {}", requested_.file_info.file_name);
-		spdlog::info("with size in mb: {}", static_cast<double>(requested_.file_info.size / 1048576.0));
+    spdlog::info("received file {}", requested_.file_info.file_name);
+    spdlog::info("with size in mb: {}", static_cast<double>(requested_.file_info.size / 1048576.0));
 
-		ofstream_.flush();
+    ofstream_.flush();
 
-		if(!file_handler_.finalize_file(requested_.file_info))
-		{
-			spdlog::error("finalizing failed!!!");
-			handle_error();
-		}
-	}
+    if(!file_handler_.finalize_file(requested_.file_info))
+    {
+      spdlog::error("finalizing failed!!!");
+      handle_error();
+    }
+  }
 
   void handle_error()
   {

@@ -17,29 +17,29 @@ namespace po = boost::program_options;
 
 int main(int argc, char **argv)
 {
-	po::options_description description("mdump - multicast filesharing for the commandline");
+  po::options_description description("mdump - multicast filesharing for the commandline");
 
-	const auto print_help = [&description](){ std::cout << description; };
+  const auto print_help = [&description](){ std::cout << description; };
 
-	description.add_options()
-		("help,h", "Display help message")
-		("verbose,v", "Show debug logs")
-		("send,s", po::value<std::vector<std::string>>()->multitoken()->composing(),
+  description.add_options()
+    ("help,h", "Display help message")
+    ("verbose,v", "Show debug logs")
+    ("send,s", po::value<std::vector<std::string>>()->multitoken()->composing(),
        "Send stuff and have fun")
-		("receive,r", po::value<std::vector<std::string>>()->multitoken()->composing(),
-			 "Receive stuff and have fun")
-			("request,e", po::value<std::vector<std::string>>()->multitoken()->zero_tokens(), "try download the files with the given hash. if no hash is give all available files are downloaded")
-		("storage,s", po::value<std::string>(), "Path to storage");
+    ("receive,r", po::value<std::vector<std::string>>()->multitoken()->composing(),
+       "Receive stuff and have fun")
+      ("request,e", po::value<std::vector<std::string>>()->multitoken()->zero_tokens(), "try download the files with the given hash. if no hash is give all available files are downloaded")
+    ("storage,s", po::value<std::string>(), "Path to storage");
 
-	po::variables_map vm;
-	po::store(po::command_line_parser(argc, argv).options(description).run(), vm);
-	po::notify(vm);
+  po::variables_map vm;
+  po::store(po::command_line_parser(argc, argv).options(description).run(), vm);
+  po::notify(vm);
 
-	if(vm.count("help") || (!vm.count("send") && !vm.count("receive")))
-	{
-		print_help();
-		return 0;
-	}
+  if(vm.count("help") || (!vm.count("send") && !vm.count("receive")))
+  {
+    print_help();
+    return 0;
+  }
 
   boost::asio::io_context io_service;
   std::unique_ptr<mfsync::multicast::file_fetcher> fetcher = nullptr;

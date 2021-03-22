@@ -128,10 +128,10 @@ namespace mfsync
     std::scoped_lock lk{mutex_};
     const auto it = available_files_.find(sha256sum);
 
-		if(it != available_files_.end())
-		{
-			return *it;
-		}
+    if(it != available_files_.end())
+    {
+      return *it;
+    }
 
     return std::nullopt;
   }
@@ -197,12 +197,12 @@ namespace mfsync
     return cv_new_available_file_;
   }
 
-	bool file_handler::init_tmp_directory()
-	{
-		if(tmp_folder_initialized_)
-		{
-			return true;
-		}
+  bool file_handler::init_tmp_directory()
+  {
+    if(tmp_folder_initialized_)
+    {
+      return true;
+    }
 
     auto tmp_path = storage_path_;
     tmp_path /= TMP_FOLDER;
@@ -220,9 +220,9 @@ namespace mfsync
       return false;
     }
 
-		tmp_folder_initialized_ = true;
-		return true;
-	}
+    tmp_folder_initialized_ = true;
+    return true;
+  }
 
   std::optional<mfsync::ofstream_wrapper> file_handler::create_file(requested_file& requested)
   {
@@ -233,47 +233,47 @@ namespace mfsync
 
     const std::string& filename = requested.file_info.file_name;
 
-		std::scoped_lock lk{mutex_};
-		if(exists_internal(requested.file_info) || is_blocked_internal(requested.file_info))
-		{
-			spdlog::debug("Tried creating existing or locked file");
-			return std::nullopt;
-		}
+    std::scoped_lock lk{mutex_};
+    if(exists_internal(requested.file_info) || is_blocked_internal(requested.file_info))
+    {
+      spdlog::debug("Tried creating existing or locked file");
+      return std::nullopt;
+    }
 
-		//Update FileInfo::offset, this way GetFile::create_request requests with correct offset
-		//if file was partly received before
-		const auto tmp_path = get_tmp_path(requested.file_info);
-		const auto file_exists = std::filesystem::exists(tmp_path);
+    //Update FileInfo::offset, this way GetFile::create_request requests with correct offset
+    //if file was partly received before
+    const auto tmp_path = get_tmp_path(requested.file_info);
+    const auto file_exists = std::filesystem::exists(tmp_path);
 
-		if(file_exists)
-		{
-			requested.offset = std::filesystem::file_size(tmp_path);
-			spdlog::debug("setting offset to: {}", requested.offset);
-		}
+    if(file_exists)
+    {
+      requested.offset = std::filesystem::file_size(tmp_path);
+      spdlog::debug("setting offset to: {}", requested.offset);
+    }
 
-		ofstream_wrapper output(requested);
+    ofstream_wrapper output(requested);
 
-		if(file_exists)
-		{
-			output.open(tmp_path.c_str(), std::ios::in|std::ios::out|std::ios::binary);
-		}
-		else
-		{
-			output.open(tmp_path.c_str(), std::ios::out|std::ios::binary);
-		}
+    if(file_exists)
+    {
+      output.open(tmp_path.c_str(), std::ios::in|std::ios::out|std::ios::binary);
+    }
+    else
+    {
+      output.open(tmp_path.c_str(), std::ios::out|std::ios::binary);
+    }
 
 
-		if(!output)
-		{
-			spdlog::error("failed to create file");
-			return std::nullopt;
-		}
+    if(!output)
+    {
+      spdlog::error("failed to create file");
+      return std::nullopt;
+    }
 
-		output.ofstream_.seekp(requested.offset, output.ofstream_.beg);
+    output.ofstream_.seekp(requested.offset, output.ofstream_.beg);
 
-		auto token = std::make_shared<std::atomic<bool>>(true);
-		output.set_token(token);
-		locked_files_.emplace_back(requested.file_info, std::move(token));
+    auto token = std::make_shared<std::atomic<bool>>(true);
+    output.set_token(token);
+    locked_files_.emplace_back(requested.file_info, std::move(token));
 
     return output;
   }
@@ -320,29 +320,29 @@ namespace mfsync
     return true;
   }
 
-	std::optional<std::ifstream> file_handler::read_file(const file_information& file_info)
-	{
-		std::scoped_lock lk{mutex_};
+  std::optional<std::ifstream> file_handler::read_file(const file_information& file_info)
+  {
+    std::scoped_lock lk{mutex_};
 
-		update_stored_files();
-		if(!exists_internal(file_info))
-		{
-			spdlog::debug("Tried reading nonexisting file");
-			return std::nullopt;
-		}
+    update_stored_files();
+    if(!exists_internal(file_info))
+    {
+      spdlog::debug("Tried reading nonexisting file");
+      return std::nullopt;
+    }
 
-		std::ifstream Input;
-		Input.open(get_storage_path(file_info), std::ios_base::binary | std::ios_base::ate);
+    std::ifstream Input;
+    Input.open(get_storage_path(file_info), std::ios_base::binary | std::ios_base::ate);
 
-		if(!Input)
-		{
-			spdlog::error("Failed to read file");
-			spdlog::error("{}",get_storage_path(file_info).c_str());
-			return std::nullopt;
-		}
+    if(!Input)
+    {
+      spdlog::error("Failed to read file");
+      spdlog::error("{}",get_storage_path(file_info).c_str());
+      return std::nullopt;
+    }
 
-		return Input;
-	}
+    return Input;
+  }
 
   std::filesystem::path file_handler::get_tmp_path(const file_information& file_info) const
   {
@@ -376,32 +376,32 @@ namespace mfsync
     std::erase_if(stored_files_, [this](const auto& file_info)
       { return !std::filesystem::exists(get_path_to_stored_file(file_info));});
 
-		for(const auto &entry : std::filesystem::directory_iterator(storage_path_))
-		{
-			const std::string name = entry.path().filename().string();
+    for(const auto &entry : std::filesystem::directory_iterator(storage_path_))
+    {
+      const std::string name = entry.path().filename().string();
 
-			if(name == TMP_FOLDER)
-			{
-				continue;
-			}
+      if(name == TMP_FOLDER)
+      {
+        continue;
+      }
 
-			if(std::any_of(stored_files_.begin(), stored_files_.end(),
-										 [&name](const auto& file_info)
-										 {	return name == file_info.file_name; }))
-			{
-				continue;
-			}
+      if(std::any_of(stored_files_.begin(), stored_files_.end(),
+                     [&name](const auto& file_info)
+                     {  return name == file_info.file_name; }))
+      {
+        continue;
+      }
 
-			auto file_info = file_information::create_file_information(entry.path());
+      auto file_info = file_information::create_file_information(entry.path());
 
-			if(!file_info.has_value())
-			{
-				spdlog::debug("file_information creation of file '{}' failed during update stroge.", entry.path().c_str());
-				continue;
-			}
+      if(!file_info.has_value())
+      {
+        spdlog::debug("file_information creation of file '{}' failed during update stroge.", entry.path().c_str());
+        continue;
+      }
 
-			add_stored_file(std::move(file_info.value()));
-		}
+      add_stored_file(std::move(file_info.value()));
+    }
 
     return true;
   }
@@ -446,29 +446,29 @@ namespace mfsync
     return path;
   }
 
-	bool file_handler::is_blocked_internal(const std::string& name) const
-	{
-		return std::any_of(locked_files_.begin(), locked_files_.end(),
-											 [&name](const auto& locked_file)
-											 { return locked_file.first.file_name == name && *locked_file.second.get() == true; });
-	}
+  bool file_handler::is_blocked_internal(const std::string& name) const
+  {
+    return std::any_of(locked_files_.begin(), locked_files_.end(),
+                       [&name](const auto& locked_file)
+                       { return locked_file.first.file_name == name && *locked_file.second.get() == true; });
+  }
 
-	bool file_handler::is_blocked_internal(const file_information& file_info) const
-	{
-		return std::any_of(locked_files_.begin(), locked_files_.end(),
-											 [&file_info](const auto& locked_file)
-											 { return locked_file.first == file_info && *locked_file.second.get() == true; });
-	}
+  bool file_handler::is_blocked_internal(const file_information& file_info) const
+  {
+    return std::any_of(locked_files_.begin(), locked_files_.end(),
+                       [&file_info](const auto& locked_file)
+                       { return locked_file.first == file_info && *locked_file.second.get() == true; });
+  }
 
-	bool file_handler::exists_internal(const std::string& name) const
-	{
-		return std::any_of(stored_files_.begin(), stored_files_.end(),
-											 [&name](const auto& file){ return file.file_name == name; });
-	}
+  bool file_handler::exists_internal(const std::string& name) const
+  {
+    return std::any_of(stored_files_.begin(), stored_files_.end(),
+                       [&name](const auto& file){ return file.file_name == name; });
+  }
 
-	bool file_handler::exists_internal(const file_information& file_info) const
-	{
-		return stored_files_.contains(file_info);
-	}
+  bool file_handler::exists_internal(const file_information& file_info) const
+  {
+    return stored_files_.contains(file_info);
+  }
 
 } //closing namespace mfsync
