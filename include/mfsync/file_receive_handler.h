@@ -19,26 +19,207 @@ namespace mfsync
 namespace filetransfer
 {
 
-
-class session : public std::enable_shared_from_this<session>
+class server_session : public std::enable_shared_from_this<server_session>
 {
 public:
-  session() = delete;
-  session(boost::asio::io_context& context,
-                       available_file file,
-                       mfsync::concurrent::deque<available_file>* deque,
-                       mfsync::file_handler& handler)
+  server_session(boost::asio::io_context& context,
+                 mfsync::file_handler& handler)
+    : io_context_(context)
+    , socket_(context)
+    , file_handler_(handler)
+  {}
+
+  boost::asio::ip::tcp::socket& get_socket()
+  {
+    return socket_;
+  }
+
+  void read()
+  {
+    boost::asio::async_read_until(
+      socket_,
+      stream_buffer_,
+      mfsync::protocol::MFSYNC_HEADER_END,
+      [me = shared_from_this()](boost::system::error_code const &error, std::size_t bytes_transferred)
+      {
+        me->handle_read_header(error, bytes_transferred);
+      });
+  }
+
+  void handle_read_header(boost::system::error_code const &error, std::size_t bytes_transferred)
+  {
+    if(!error)
+    {
+      // received data is "committed" from output sequence to input sequence
+      stream_buffer_.commit(bytes_transferred);
+
+			std::istream is(&stream_buffer_);
+			//std::string message;
+			std::string message(std::istreambuf_iterator<char>(is), {});
+			//is >> message;
+
+      //boost::asio::streambuf::const_buffers_type bufs = stream_buffer_.data();
+      //std::string message(
+      //  boost::asio::buffers_begin(bufs),
+      //  boost::asio::buffers_begin(bufs) + bytes_transferred);
+
+      //stream_buffer_.commit(bytes_transferred);
+
+      //stream_buffer_.consume(bytes_transferred);
+
+      spdlog::info("Received header: {}", message);
+
+      const auto file = protocol::get_requested_file_from_message(message);
+
+      if(!file.has_value())
+      {
+        spdlog::debug("Couldnt create requested_file from message: {}", message);
+        return;
+      }
+
+      if(file_handler_.is_stored(file.value().file_info))
+      {
+        requested_ = file.value();
+        message_ = protocol::create_begin_transmission_message();
+        spdlog::debug("Sending response: {}", message_);
+        async_write(socket_,
+          boost::asio::buffer(message_.data(), message_.size()),
+          [me = shared_from_this()](boost::system::error_code const &ec, std::size_t) {
+            if(!ec)
+            {
+              spdlog::info("Done sending response");
+              me->read_confirmation();
+            }
+            else
+            {
+              spdlog::info("async write failed: {}", ec.message());
+            }
+          });
+      }
+      else
+      {
+        message_ = protocol::create_error_message("file doesnt exists");
+        spdlog::debug("Sending response: {}", message_);
+        async_write(socket_,
+          boost::asio::buffer(message_.data(), message_.size()),
+          [me = shared_from_this()](boost::system::error_code const &ec, std::size_t) {
+            if(!ec)
+            {
+              spdlog::info("Done sending response");
+            }
+            else
+            {
+              spdlog::info("async write failed: {}", ec.message());
+            }
+          });
+      }
+    }
+    else
+    {
+      spdlog::debug("Error on handle_read_header: {}", error.message());
+    }
+  }
+
+  void read_confirmation()
+  {
+    boost::asio::async_read_until(
+      socket_,
+      stream_buffer_,
+      mfsync::protocol::MFSYNC_HEADER_END,
+      [me = shared_from_this()](boost::system::error_code const &error, std::size_t bytes_transferred)
+      {
+        me->handle_read_confirmation(error, bytes_transferred);
+      });
+  }
+
+  void handle_read_confirmation(boost::system::error_code const &error, std::size_t bytes_transferred)
+  {
+    boost::asio::streambuf::const_buffers_type bufs = stream_buffer_.data();
+    std::string message(
+      boost::asio::buffers_begin(bufs),
+      boost::asio::buffers_begin(bufs) + bytes_transferred);
+
+    if(message != protocol::create_begin_transmission_message())
+    {
+      spdlog::debug("begin transmission wasnt confirmed. aborting");
+      spdlog::debug("message was: {}", message);
+      return;
+    }
+
+    auto source_file = file_handler_.read_file(requested_.file_info);
+
+		if(!source_file.has_value())
+		{
+			spdlog::error("Cant read file");
+			//handle_error();
+			return;
+		}
+
+		ifstream_ = std::move(source_file.value());
+
+		ifstream_.seekg(0, ifstream_.end);
+		const auto file_size = ifstream_.tellg();
+		ifstream_.seekg(requested_.offset, ifstream_.beg);
+
+		spdlog::info("Start sending file: {}", requested_.file_info.file_name);
+		spdlog::debug("FileSize: {}, Sha256sum: {}", file_size, requested_.file_info.sha256sum);
+		write_file();
+	}
+
+	void write_file()
+	{
+		if(ifstream_)
+		{
+			writebuf_.resize(requested_.chunksize);
+			ifstream_.read(writebuf_.data(), writebuf_.size());
+
+			if(ifstream_.fail() && !ifstream_.eof())
+			{
+				spdlog::debug("Failed reading file");
+				//handle_error();
+				return;
+			}
+
+      async_write(socket_,
+        boost::asio::buffer(writebuf_.data(), writebuf_.size()),
+        [me = shared_from_this()](boost::system::error_code const &ec, std::size_t) {
+          if(!ec)
+          {
+            spdlog::debug("sent chunk, sending next");
+            me->write_file();
+          }
+          else
+          {
+            spdlog::info("async write failed: {}", ec.message());
+          }
+        });
+    }
+  }
+
+
+private:
+  boost::asio::io_context& io_context_;
+  boost::asio::ip::tcp::socket socket_;
+  mfsync::file_handler& file_handler_;
+  std::string message_;
+  requested_file requested_;
+  boost::asio::streambuf stream_buffer_;
+  std::vector<char> writebuf_;
+  std::ifstream ifstream_;
+};
+
+class client_session : public std::enable_shared_from_this<client_session>
+{
+public:
+  client_session() = delete;
+  client_session(boost::asio::io_context& context,
+                 available_file file,
+                 mfsync::concurrent::deque<available_file>* deque,
+                 mfsync::file_handler& handler)
     : io_context_(context)
     , socket_(context)
     , available_(file)
     , deque_(deque)
-    , file_handler_(handler)
-  {}
-
-  session(boost::asio::io_context& context,
-                       mfsync::file_handler& handler)
-    : io_context_(context)
-    , socket_(context)
     , file_handler_(handler)
   {}
 
@@ -51,7 +232,8 @@ public:
   {
     //auto endpoint = boost::asio::ip::tcp::endpoint{available_.source_address, available_.source_port};
     boost::asio::ip::tcp::resolver resolver{io_context_};
-    auto endpoint = resolver.resolve(available_.source_address.to_string(), std::to_string(available_.source_port));
+    auto endpoint = resolver.resolve(available_.source_address.to_string(),
+                                     std::to_string(available_.source_port));
 
     boost::asio::async_connect(
       socket_,
@@ -78,7 +260,18 @@ public:
     requested_file requested;
     requested.file_info = std::move(available_.file_info);
     requested.chunksize = mfsync::protocol::CHUNKSIZE;
-    const auto ofstream = file_handler_.create_file(requested);
+
+    auto output_file_stream = file_handler_.create_file(requested);
+
+    if(!output_file_stream.has_value())
+    {
+      spdlog::debug("file creation failed. abort session");
+      handle_error();
+      return;
+    }
+
+    ofstream_ = std::move(output_file_stream.value());
+    requested_ = requested;
 
     message_ = protocol::create_message_from_requested_file(requested);
 
@@ -88,13 +281,18 @@ public:
       boost::asio::buffer(message_.data(), message_.size()),
       [me = shared_from_this()](boost::system::error_code const &ec, std::size_t) {
         if(!ec)
+        {
           spdlog::info("Done requesting file!");
+          me->read_file_request_response();
+        }
         else
+        {
           spdlog::info("async write failed: {}", ec.message());
+        }
       });
   }
 
-  void read()
+  void read_file_request_response()
   {
     boost::asio::async_read_until(
       socket_,
@@ -102,37 +300,122 @@ public:
       mfsync::protocol::MFSYNC_HEADER_END,
       [me = shared_from_this()](boost::system::error_code const &error, std::size_t bytes_transferred)
       {
-        me->handle_read_header(error, bytes_transferred);
+        me->handle_read_file_request_response(error, bytes_transferred);
       });
   }
 
-  void handle_read_header(boost::system::error_code const &error, std::size_t bytes_transferred)
+  void handle_read_file_request_response(boost::system::error_code const &error, std::size_t bytes_transferred)
   {
     if(!error)
     {
       boost::asio::streambuf::const_buffers_type bufs = stream_buffer_.data();
       std::string line(
         boost::asio::buffers_begin(bufs),
-        boost::asio::buffers_begin(bufs) + bytes_transferred);
+        boost::asio::buffers_begin(bufs) + bytes_transferred);;
 
-      spdlog::info("Received header: {}", line);
+      spdlog::debug("Received file_request_response: {}", line);
+
+      if(line != protocol::create_begin_transmission_message())
+      {
+        spdlog::debug("Server returned with error: {}", line);
+        handle_error();
+        return;
+      }
+
+      message_ = protocol::create_begin_transmission_message();
+      spdlog::debug("Sending response: {}", message_);
+      bytes_written_to_requested_ = requested_.offset;
+
+      async_write(socket_,
+        boost::asio::buffer(message_.data(), message_.size()),
+        [me = shared_from_this()](boost::system::error_code const &ec, std::size_t) {
+          if(!ec)
+          {
+            spdlog::info("Done sending response");
+            me->read_file_chunk();
+          }
+          else
+          {
+            spdlog::info("async write failed: {}", ec.message());
+            me->handle_error();
+          }
+        });
     }
     else
     {
-      spdlog::debug("Error on handle_read_header: {}", error.message());
+      spdlog::debug("Error on handle_read_file_request_response: {}", error.message());
     }
   }
 
+  void read_file_chunk()
+  {
+    readbuf_.resize(requested_.chunksize);
 
+    auto bytes_left = requested_.file_info.size - bytes_written_to_requested_;
+
+    if(bytes_left <= 0)
+    {
+      spdlog::info("complete file is written!");
+      return;
+    }
+
+    if(bytes_left > requested_.chunksize)
+    {
+      bytes_left = requested_.chunksize;
+    }
+
+    boost::asio::mutable_buffers_1 buf = boost::asio::buffer(&readbuf_[0], bytes_left);
+    boost::asio::async_read(
+      socket_,
+      buf,
+      [me = shared_from_this()](boost::system::error_code const &error, std::size_t bytes_transferred)
+      {
+        me->handle_read_file_chunk(error, bytes_transferred);
+      });
+  }
+
+
+  void handle_read_file_chunk(boost::system::error_code const &error, std::size_t bytes_transferred)
+  {
+    ofstream_.write(reinterpret_cast<char*>(readbuf_.data()), bytes_transferred, bytes_written_to_requested_);
+    bytes_written_to_requested_ += bytes_transferred;
+
+		spdlog::debug("received. bytes written: {} of: {}", ofstream_.tellp(), requested_.file_info.size);
+		if(ofstream_.tellp() < static_cast<std::streamsize>(requested_.file_info.size))
+		{
+			read_file_chunk();
+			return;
+		}
+
+		spdlog::info("received file {}", requested_.file_info.file_name);
+		spdlog::info("with size in mb: {}", static_cast<double>(requested_.file_info.size / 1048576.0));
+
+		ofstream_.flush();
+
+		if(!file_handler_.finalize_file(requested_.file_info))
+		{
+			spdlog::error("finalizing failed!!!");
+			handle_error();
+		}
+	}
+
+  void handle_error()
+  {
+    spdlog::error("handle_error not implemented yet!!!");
+  }
 
 private:
   boost::asio::io_context& io_context_;
   boost::asio::ip::tcp::socket socket_;
   available_file available_;
+  requested_file requested_;
+  size_t bytes_written_to_requested_ = 0;
   mfsync::concurrent::deque<available_file>* deque_ = nullptr;
   mfsync::file_handler& file_handler_;
   std::string message_;
   boost::asio::streambuf stream_buffer_;
+  std::vector<uint8_t> readbuf_;
+  mfsync::ofstream_wrapper ofstream_;
 };
 
 class server
@@ -173,11 +456,11 @@ private:
 
   void accept_connections()
   {
-    auto handler = std::make_shared<mfsync::filetransfer::session>(io_context_, file_handler_);
+    auto handler = std::make_shared<mfsync::filetransfer::server_session>(io_context_, file_handler_);
     acceptor_.async_accept(handler->get_socket(), [this, handler](auto ec) { handle_new_connection(handler, ec); });
   }
 
-  void handle_new_connection(std::shared_ptr<mfsync::filetransfer::session> handler,
+  void handle_new_connection(std::shared_ptr<mfsync::filetransfer::server_session> handler,
                              const boost::system::error_code &ec)
   {
     if(ec)
@@ -194,7 +477,7 @@ private:
 
     handler->read();
 
-    auto new_handler = std::make_shared<mfsync::filetransfer::session>(io_context_, file_handler_);
+    auto new_handler = std::make_shared<mfsync::filetransfer::server_session>(io_context_, file_handler_);
 
     acceptor_.async_accept(new_handler->get_socket(),
                            [this, new_handler](auto ec) { handle_new_connection(new_handler, ec); });
@@ -241,6 +524,12 @@ public:
   void get_files()
   {
     std::scoped_lock lk{mutex_};
+
+    if(!session_.expired())
+    {
+      return;
+    }
+
     auto availables = file_handler_->get_available_files();
 
     if(request_all_)
@@ -276,11 +565,6 @@ private:
 
   void try_start_new_session()
   {
-    if(!session_.expired())
-    {
-      return;
-    }
-
     auto available = request_queue_.try_pop();
 
     if(!available.has_value())
@@ -288,7 +572,10 @@ private:
       return;
     }
 
-    auto session = std::make_shared<mfsync::filetransfer::session>(io_context_,
+    //TODO: available file should be popped by session itself. just check if request_queue_ is empty, and if not create session
+    //the session then takes the first available file from the queue itself.
+    spdlog::debug("creating new session");
+    auto session = std::make_shared<mfsync::filetransfer::client_session>(io_context_,
                                                                        std::move(available.value()),
                                                                        &request_queue_,
                                                                        *file_handler_);
@@ -337,7 +624,7 @@ private:
   std::vector<std::string> files_to_request_;
   mfsync::concurrent::deque<available_file> request_queue_;
   bool request_all_;
-  std::weak_ptr<mfsync::filetransfer::session> session_;
+  std::weak_ptr<mfsync::filetransfer::client_session> session_;
   mutable std::mutex mutex_;
 };
 
