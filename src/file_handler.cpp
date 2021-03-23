@@ -291,7 +291,7 @@ namespace mfsync
   {
     if(storage_path_.empty())
     {
-      spdlog::error("cant update storage, no storage path was given");
+      spdlog::debug("cant update storage, no storage path was given");
       return false;
     }
 

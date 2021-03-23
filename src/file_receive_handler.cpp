@@ -23,6 +23,7 @@ file_receive_handler::file_receive_handler(boost::asio::io_context& context, mfs
 
 void file_receive_handler::set_files(std::vector<std::string> files_to_request)
 {
+  request_all_ = false;
   files_to_request_ = std::move(files_to_request);
 }
 
