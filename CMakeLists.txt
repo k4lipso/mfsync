@@ -38,6 +38,7 @@ add_executable(mfsync
   src/deque.cpp
   src/server_session.cpp
   src/client_session.cpp
+  src/server.cpp
   )
 
 target_include_directories(mfsync

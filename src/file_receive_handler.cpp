@@ -1,8 +1,9 @@
 #include "mfsync/file_receive_handler.h"
 
+#include <boost/bind.hpp>
+
 namespace mfsync
 {
-
 
 file_receive_handler::file_receive_handler(boost::asio::io_context& context, mfsync::file_handler& file_handler)
   : io_context_(context)
@@ -119,4 +120,4 @@ void file_receive_handler::handle_timeout(const boost::system::error_code& error
   }
 }
 
-}
+} //closing namespace mfsync
