@@ -37,6 +37,7 @@ void file_receive_handler::get_files()
 
   if(!session_.expired())
   {
+    wait_for_new_files();
     return;
   }
 
