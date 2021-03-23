@@ -38,12 +38,12 @@ namespace mfsync::multicast
       spdlog::debug("Received Message: '{}'", std::string(data_, bytes_recvd));
       spdlog::debug("From: {}", boost::lexical_cast<std::string>(sender_endpoint_.address()));
 
-      auto foo = mfsync::protocol::get_available_files_from_message(std::string(data_, bytes_recvd),
+      auto available = mfsync::protocol::get_available_files_from_message(std::string(data_, bytes_recvd),
                                                                     sender_endpoint_);
 
-      if(foo.has_value())
+      if(available.has_value())
       {
-        file_handler_->add_available_files(std::move(foo.value()));
+        file_handler_->add_available_files(std::move(available.value()));
       }
 
       socket_.async_receive_from(boost::asio::buffer(data_, max_length), sender_endpoint_,
