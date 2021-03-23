@@ -107,6 +107,7 @@ int main(int argc, char **argv)
     sender = std::make_unique<mfsync::multicast::file_sender>(io_service,
                                      boost::asio::ip::address::from_string(multicast_address),
                                      multicast_port,
+                                     port,
                                      file_handler);
 
     file_server = std::make_unique<mfsync::filetransfer::server>(io_service,

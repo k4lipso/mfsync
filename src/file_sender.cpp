@@ -5,11 +5,13 @@ namespace mfsync::multicast
   file_sender::file_sender(boost::asio::io_service& io_service,
                            const boost::asio::ip::address& multicast_address,
                            short multicast_port,
+                           unsigned short tcp_port,
                            file_handler& filehandler)
     : endpoint_(multicast_address, multicast_port)
     , socket_(io_service, endpoint_.protocol())
     , timer_(io_service)
     , file_handler_(filehandler)
+    , port_(tcp_port)
 
   {
     init();
@@ -17,7 +19,7 @@ namespace mfsync::multicast
 
   void file_sender::init()
   {
-    auto messages = protocol::create_messages_from_file_info(file_handler_.get_stored_files());
+    auto messages = protocol::create_messages_from_file_info(file_handler_.get_stored_files(), port_);
 
     if(messages.empty())
     {
@@ -50,7 +52,7 @@ namespace mfsync::multicast
   {
     if (!error)
     {
-      auto messages = protocol::create_messages_from_file_info(file_handler_.get_stored_files());
+      auto messages = protocol::create_messages_from_file_info(file_handler_.get_stored_files(), port_);
 
       if(!messages.empty())
       {
