@@ -37,6 +37,7 @@ add_executable(mfsync
   src/protocol.cpp
   src/deque.cpp
   src/server_session.cpp
+  src/client_session.cpp
   )
 
 target_include_directories(mfsync
