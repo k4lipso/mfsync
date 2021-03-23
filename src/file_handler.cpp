@@ -234,8 +234,6 @@ namespace mfsync
       return std::nullopt;
     }
 
-    const std::string& filename = requested.file_info.file_name;
-
     std::scoped_lock lk{mutex_};
     if(exists_internal(requested.file_info) || is_blocked_internal(requested.file_info))
     {
