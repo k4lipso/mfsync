@@ -30,7 +30,9 @@ message("Boost Libraries: ${Boost_LIBRARIES}")
 
 add_executable(mfsync
   src/main.cpp
+  src/file_information.cpp
   src/file_handler.cpp
+  src/ofstream_wrapper.cpp
   src/file_sender.cpp
   src/file_fetcher.cpp
   src/file_receive_handler.cpp
