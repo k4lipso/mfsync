@@ -169,7 +169,7 @@ namespace mfsync
     void add_available_file(available_file file);
     void add_available_files(available_files available);
     stored_files get_stored_files();
-    available_files get_available_files() const;
+    available_files get_available_files();
     std::condition_variable& get_cv_new_available_files();
 
     //TODO: replace int by ofstreamwrapper
@@ -182,6 +182,7 @@ namespace mfsync
     std::filesystem::path get_tmp_path(const file_information& file_info) const;
     std::filesystem::path get_storage_path(const file_information& file_info) const;
     bool update_stored_files();
+    bool update_available_files();
     void add_stored_file(file_information file);
     bool stored_file_exists(const file_information& file) const;
     bool stored_file_exists(const std::string& sha256sum) const;

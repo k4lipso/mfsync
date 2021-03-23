@@ -186,9 +186,10 @@ namespace mfsync
     return stored_files_;
   }
 
-  file_handler::available_files file_handler::get_available_files() const
+  file_handler::available_files file_handler::get_available_files()
   {
     std::scoped_lock lk{mutex_};
+    update_available_files();
     return available_files_;
   }
 
@@ -404,6 +405,21 @@ namespace mfsync
     }
 
     return true;
+  }
+
+  bool file_handler::update_available_files()
+  {
+    for(auto it = available_files_.begin(); it != available_files_.end(); )
+    {
+      if(stored_files_.contains(it->file_info))
+      {
+        it = available_files_.erase(it);
+      }
+      else
+      {
+        ++it;
+      }
+    }
   }
 
   void file_handler::add_stored_file(file_information file)
