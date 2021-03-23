@@ -33,8 +33,6 @@ namespace mfsync::multicast
     boost::asio::deadline_timer timer_;
     std::string message_;
     unsigned short port_;
-
-
     file_handler& file_handler_;
   };
 } //closing namespace mfsync::multicast

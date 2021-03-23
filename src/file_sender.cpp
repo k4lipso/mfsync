@@ -10,8 +10,8 @@ namespace mfsync::multicast
     : endpoint_(multicast_address, multicast_port)
     , socket_(io_service, endpoint_.protocol())
     , timer_(io_service)
-    , file_handler_(filehandler)
     , port_(tcp_port)
+    , file_handler_(filehandler)
 
   {
     init();

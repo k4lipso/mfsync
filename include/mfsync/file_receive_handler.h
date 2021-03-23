@@ -128,6 +128,12 @@ public:
 
   void handle_read_confirmation(boost::system::error_code const &error, std::size_t bytes_transferred)
   {
+    if(error)
+    {
+      spdlog::debug("Error during read_confirmation: {}", error.message());
+      return;
+    }
+
     boost::asio::streambuf::const_buffers_type bufs = stream_buffer_.data();
     std::string message(
       boost::asio::buffers_begin(bufs),
@@ -373,6 +379,13 @@ public:
 
   void handle_read_file_chunk(boost::system::error_code const &error, std::size_t bytes_transferred)
   {
+    if(error)
+    {
+      spdlog::debug("error during read_file_chunk: {}", error.message());
+      handle_error();
+      return;
+    }
+
     ofstream_.write(reinterpret_cast<char*>(readbuf_.data()), bytes_transferred, bytes_written_to_requested_);
     bytes_written_to_requested_ += bytes_transferred;
 
