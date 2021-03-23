@@ -68,7 +68,8 @@ std::optional<requested_file> get_requested_file_from_message(const std::string&
   return file;
 }
 
-std::vector<std::string> create_messages_from_file_info(const file_handler::stored_files& file_infos)
+std::vector<std::string> create_messages_from_file_info(const file_handler::stored_files& file_infos,
+                                                        unsigned short port)
 {
   std::string message_string;
   std::vector<std::string> result;
@@ -79,7 +80,7 @@ std::vector<std::string> create_messages_from_file_info(const file_handler::stor
     message_sstring << file_info.file_name << "?";
     message_sstring << file_info.sha256sum << "?";
     message_sstring << std::to_string(file_info.size) << "?";
-    message_sstring << std::to_string(TCP_PORT) << "?";
+    message_sstring << std::to_string(port) << "?";
 
     message_sstring.seekg(0, std::ios::end);
     auto message_sstring_size = message_sstring.tellg();
