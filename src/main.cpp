@@ -96,9 +96,6 @@ int main(int argc, char **argv)
     return 0;
   }
 
-  spdlog::error("Mode: {}", vm["mode"].as<std::string>());
-  spdlog::error("Multicast Address: {}", vm["multicast-address"].as<std::string>());
-
   const auto mode = get_mode(vm["mode"].as<std::string>());
   //todo: check if multicast addr is valid
   const auto multicast_address = vm["multicast-address"].as<std::string>();
