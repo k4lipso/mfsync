@@ -215,12 +215,10 @@ class client_session : public std::enable_shared_from_this<client_session>
 public:
   client_session() = delete;
   client_session(boost::asio::io_context& context,
-                 available_file file,
-                 mfsync::concurrent::deque<available_file>* deque,
+                 mfsync::concurrent::deque<available_file>& deque,
                  mfsync::file_handler& handler)
     : io_context_(context)
     , socket_(context)
-    , available_(file)
     , deque_(deque)
     , file_handler_(handler)
   {}
@@ -232,15 +230,26 @@ public:
 
   void start_request()
   {
-    //auto endpoint = boost::asio::ip::tcp::endpoint{available_.source_address, available_.source_port};
+    auto available = deque_.try_pop();
+
+    if(!available.has_value())
+    {
+      spdlog::debug("no available file in queue. aborting request");
+      return;
+    }
+
+    //not setting offset here, it will be set by file_handler when file is created
+    requested_.file_info = std::move(available.value().file_info);
+    requested_.chunksize = mfsync::protocol::CHUNKSIZE;
+
     boost::asio::ip::tcp::resolver resolver{io_context_};
-    auto endpoint = resolver.resolve(available_.source_address.to_string(),
-                                     std::to_string(available_.source_port));
+    auto endpoint = resolver.resolve(available.value().source_address.to_string(),
+                                     std::to_string(available.value().source_port));
 
     boost::asio::async_connect(
       socket_,
       endpoint,
-      [this, me = shared_from_this()]
+      [this, me = shared_from_this(), available]
       (boost::system::error_code ec, boost::asio::ip::tcp::endpoint)
       {
         if(!ec)
@@ -250,20 +259,15 @@ public:
         else
         {
           spdlog::debug("Couldnt conntect. error: {}", ec.message());
-          spdlog::debug("Target host: {} {}", available_.source_address.to_string(),
-                                              available_.source_port);
+          spdlog::debug("Target host: {} {}", available.value().source_address.to_string(),
+                                              available.value().source_port);
         }
       });
   }
 
   void request_file()
   {
-    //not setting offset here, it will be set by file_handler when file is created
-    requested_file requested;
-    requested.file_info = std::move(available_.file_info);
-    requested.chunksize = mfsync::protocol::CHUNKSIZE;
-
-    auto output_file_stream = file_handler_.create_file(requested);
+    auto output_file_stream = file_handler_.create_file(requested_);
 
     if(!output_file_stream.has_value())
     {
@@ -273,9 +277,8 @@ public:
     }
 
     ofstream_ = std::move(output_file_stream.value());
-    requested_ = requested;
 
-    message_ = protocol::create_message_from_requested_file(requested);
+    message_ = protocol::create_message_from_requested_file(requested_);
 
     spdlog::debug("Sending message: {}", message_);
 
@@ -416,10 +419,9 @@ public:
 private:
   boost::asio::io_context& io_context_;
   boost::asio::ip::tcp::socket socket_;
-  available_file available_;
   requested_file requested_;
   size_t bytes_written_to_requested_ = 0;
-  mfsync::concurrent::deque<available_file>* deque_ = nullptr;
+  mfsync::concurrent::deque<available_file>& deque_;
   mfsync::file_handler& file_handler_;
   std::string message_;
   boost::asio::streambuf stream_buffer_;
