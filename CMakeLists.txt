@@ -4,7 +4,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_BUILD_TYPE Debug)
 
-project("mdump" CXX)
+project("mfsync" CXX)
 
 option(BUILD_TESTS "test will be build" OFF)
 option(BUILD_DOC "build documentation" OFF)
@@ -28,7 +28,7 @@ message("Boost_LIBRARY_DIRS: ${Boost_LIBRARY_DIRS}")
 message("Boost Libraries: ${Boost_LIBRARIES}")
 
 
-add_executable(mdump
+add_executable(mfsync
   src/main.cpp
   src/file_handler.cpp
   src/file_sender.cpp
@@ -38,20 +38,20 @@ add_executable(mdump
   src/deque.cpp
   )
 
-target_include_directories(mdump
+target_include_directories(mfsync
   PRIVATE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     ${OPENSSL_INCLUDE_DIR}
 )
 
-target_link_libraries(mdump
+target_link_libraries(mfsync
   PRIVATE
     Boost::program_options
     spdlog::spdlog
     ${OPENSSL_LIBRARIES}
 )
 
-target_compile_options(mdump
+target_compile_options(mfsync
   PUBLIC
   -DBOOST_LOG_DYN_LINK
   )
