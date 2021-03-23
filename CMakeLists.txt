@@ -36,6 +36,7 @@ add_executable(mfsync
   src/file_receive_handler.cpp
   src/protocol.cpp
   src/deque.cpp
+  src/server_session.cpp
   )
 
 target_include_directories(mfsync
