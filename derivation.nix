@@ -1,7 +1,7 @@
 { pkgs, stdenv, boost, sqlite_modern_cpp }:
 
 stdenv.mkDerivation {
-  name = "mdump";
+  name = "mfsync";
   src = ./.;
 
   enableParallelBuilding = true;
@@ -12,6 +12,6 @@ stdenv.mkDerivation {
 
   installPhase = ''
     mkdir -p $out/bin
-    cp mdump $out/bin/
+    cp mfsync $out/bin/
   '';
 }

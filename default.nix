@@ -2,7 +2,7 @@
 with pkgs; 
 
 stdenv.mkDerivation {
-  name = "mdump";
+  name = "mfsync";
   src = ./.;
   nativeBuildInputs = [ sqlite_modern_cpp pkgconfig cmake gnumake gdb ];
   depsBuildBuild = [ ];

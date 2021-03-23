@@ -1,5 +1,5 @@
 {
-  description = "mdump: multicast filesharing for the commandline";
+  description = "mfsync: multicast filesharing for the commandline";
 
   inputs.utils.url = "github:numtide/flake-utils";
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -31,15 +31,15 @@
             sqlite_modern_cpp = modern_sqlite;
           };
 
-          packages.mdump = import ./derivation.nix {
+          packages.mfsync = import ./derivation.nix {
             pkgs = pkgs;
             stdenv = pkgs.overrideCC pkgs.stdenv pkgs.gcc10;
             boost = pkgs.boost174;
             sqlite_modern_cpp = modern_sqlite;
           };
 
-          defaultPackage = self.packages.${system}.mdump;
-          hydraJobs.mdump = self.packages.${system}.mdump;
+          defaultPackage = self.packages.${system}.mfsync;
+          hydraJobs.mfsync = self.packages.${system}.mfsync;
         }
       );
 }
