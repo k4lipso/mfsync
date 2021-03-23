@@ -1,6 +1,6 @@
 ### multicast file sync -> sync local files on multiple machines
 
-#### syntax (this syntax is not implemented yet):
+#### examples:
 
 ```
 mfsync sync 239.255.0.1 ./destination
