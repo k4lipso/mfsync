@@ -153,6 +153,8 @@ namespace mfsync
     std::unique_lock lk{mutex_};
     bool changed = false;
 
+    update_stored_files();
+
     for(auto& avail : available)
     {
       if(stored_files_.contains(avail.file_info))
