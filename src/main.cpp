@@ -12,6 +12,7 @@
 #include "mfsync/file_sender.h"
 #include "mfsync/file_fetcher.h"
 #include "mfsync/file_receive_handler.h"
+#include "mfsync/server.h"
 
 namespace po = boost::program_options;
 
