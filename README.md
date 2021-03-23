@@ -21,6 +21,6 @@ mfsync fetch 239.255.0.1
   * requests names of all available files in the network and prints them to stdout
 
 ```
-mfsync get 239.255.0.1 sha256sum ./destination
+mfsync get 239.255.0.1 sha256sum1 sha256sum2 ./destination
 ```
-  * downloads file with the given sha256sum to given destination if available
+  * downloads files with the given sha256sums to given destination if available
