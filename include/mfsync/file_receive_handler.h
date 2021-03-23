@@ -48,76 +48,70 @@ public:
 
   void handle_read_header(boost::system::error_code const &error, std::size_t bytes_transferred)
   {
-    if(!error)
+    if(error)
     {
-      // received data is "committed" from output sequence to input sequence
-      stream_buffer_.commit(bytes_transferred);
+      spdlog::debug("Error on handle_read_header: {}", error.message());
+      return;
+    }
 
-      std::istream is(&stream_buffer_);
-      //std::string message;
-      std::string message(std::istreambuf_iterator<char>(is), {});
-      //is >> message;
+    stream_buffer_.commit(bytes_transferred);
+    std::istream is(&stream_buffer_);
+    std::string message(std::istreambuf_iterator<char>(is), {});
+    spdlog::debug("Received header: {}", message);
 
-      //boost::asio::streambuf::const_buffers_type bufs = stream_buffer_.data();
-      //std::string message(
-      //  boost::asio::buffers_begin(bufs),
-      //  boost::asio::buffers_begin(bufs) + bytes_transferred);
+    const auto file = protocol::get_requested_file_from_message(message);
+    if(!file.has_value())
+    {
+      spdlog::debug("Couldnt create requested_file from message: {}", message);
+      return;
+    }
 
-      //stream_buffer_.commit(bytes_transferred);
-
-      //stream_buffer_.consume(bytes_transferred);
-
-      spdlog::info("Received header: {}", message);
-
-      const auto file = protocol::get_requested_file_from_message(message);
-
-      if(!file.has_value())
-      {
-        spdlog::debug("Couldnt create requested_file from message: {}", message);
-        return;
-      }
-
-      if(file_handler_.is_stored(file.value().file_info))
-      {
-        requested_ = file.value();
-        message_ = protocol::create_begin_transmission_message();
-        spdlog::debug("Sending response: {}", message_);
-        async_write(socket_,
-          boost::asio::buffer(message_.data(), message_.size()),
-          [me = shared_from_this()](boost::system::error_code const &ec, std::size_t) {
-            if(!ec)
-            {
-              spdlog::info("Done sending response");
-              me->read_confirmation();
-            }
-            else
-            {
-              spdlog::info("async write failed: {}", ec.message());
-            }
-          });
-      }
-      else
-      {
-        message_ = protocol::create_error_message("file doesnt exists");
-        spdlog::debug("Sending response: {}", message_);
-        async_write(socket_,
-          boost::asio::buffer(message_.data(), message_.size()),
-          [me = shared_from_this()](boost::system::error_code const &ec, std::size_t) {
-            if(!ec)
-            {
-              spdlog::info("Done sending response");
-            }
-            else
-            {
-              spdlog::info("async write failed: {}", ec.message());
-            }
-          });
-      }
+    if(file_handler_.is_stored(file.value().file_info))
+    {
+      requested_ = file.value();
+      send_confirmation();
     }
     else
     {
-      spdlog::debug("Error on handle_read_header: {}", error.message());
+      reply_with_error("file doesnt exists");
     }
+  }
+
+  void send_confirmation()
+  {
+    message_ = protocol::create_begin_transmission_message();
+    spdlog::debug("Sending response: {}", message_);
+    async_write(socket_,
+      boost::asio::buffer(message_.data(), message_.size()),
+      [me = shared_from_this()](boost::system::error_code const &ec, std::size_t) {
+        if(!ec)
+        {
+          spdlog::info("Done sending response");
+          me->read_confirmation();
+        }
+        else
+        {
+          spdlog::info("async write failed: {}", ec.message());
+        }
+      });
+  }
+
+  void reply_with_error(const std::string& reason)
+  {
+    message_ = protocol::create_error_message(reason);
+    spdlog::debug("Sending response: {}", message_);
+    async_write(socket_,
+      boost::asio::buffer(message_.data(), message_.size()),
+      [me = shared_from_this()](boost::system::error_code const &ec, std::size_t) {
+        if(!ec)
+        {
+          spdlog::debug("Done sending response");
+        }
+        else
+        {
+          spdlog::debug("async write failed: {}", ec.message());
+        }
+      });
   }
 
   void read_confirmation()
@@ -168,32 +162,34 @@ public:
 
   void write_file()
   {
-    if(ifstream_)
+    if(!ifstream_)
     {
-      writebuf_.resize(requested_.chunksize);
-      ifstream_.read(writebuf_.data(), writebuf_.size());
-
-      if(ifstream_.fail() && !ifstream_.eof())
-      {
-        spdlog::debug("Failed reading file");
-        //handle_error();
-        return;
-      }
-
-      async_write(socket_,
-        boost::asio::buffer(writebuf_.data(), writebuf_.size()),
-        [me = shared_from_this()](boost::system::error_code const &ec, std::size_t) {
-          if(!ec)
-          {
-            spdlog::debug("sent chunk, sending next");
-            me->write_file();
-          }
-          else
-          {
-            spdlog::info("async write failed: {}", ec.message());
-          }
-        });
+      return;
     }
+
+    writebuf_.resize(requested_.chunksize);
+    ifstream_.read(writebuf_.data(), writebuf_.size());
+
+    if(ifstream_.fail() && !ifstream_.eof())
+    {
+      spdlog::debug("Failed reading file");
+      //handle_error();
+      return;
+    }
+
+    async_write(socket_,
+      boost::asio::buffer(writebuf_.data(), writebuf_.size()),
+      [me = shared_from_this()](boost::system::error_code const &ec, std::size_t) {
+        if(!ec)
+        {
+          spdlog::debug("sent chunk, sending next");
+          me->write_file();
+        }
+        else
+        {
+          spdlog::info("async write failed: {}", ec.message());
+        }
+      });
   }
 
 
