@@ -122,12 +122,12 @@ int main(int argc, char **argv)
 
     if(file_hashes.empty())
     {
-      receiver = std::make_unique<mfsync::file_receive_handler>(io_service, &file_handler);
+      receiver = std::make_unique<mfsync::file_receive_handler>(io_service, file_handler);
     }
     else
     {
       receiver = std::make_unique<mfsync::file_receive_handler>(io_service,
-                                                                &file_handler,
+                                                                file_handler,
                                                                 std::move(file_hashes));
     }
 
