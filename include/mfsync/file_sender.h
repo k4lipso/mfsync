@@ -20,7 +20,7 @@ namespace mfsync::multicast
     file_sender(boost::asio::io_service& io_service,
                 const boost::asio::ip::address& multicast_address,
                 short multicast_port,
-                file_handler* filehandler);
+                file_handler& filehandler);
 
     void init();
     void handle_send_to(const boost::system::error_code& error);
@@ -32,6 +32,6 @@ namespace mfsync::multicast
     boost::asio::deadline_timer timer_;
     std::string message_;
 
-    file_handler* file_handler_;
+    file_handler& file_handler_;
   };
 } //closing namespace mfsync::multicast
