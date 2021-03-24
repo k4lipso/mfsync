@@ -72,12 +72,12 @@ void server_session::send_confirmation()
     [me = shared_from_this()](boost::system::error_code const &ec, std::size_t) {
       if(!ec)
       {
-        spdlog::info("Done sending response");
+        spdlog::debug("Done sending response");
         me->read_confirmation();
       }
       else
       {
-        spdlog::info("async write failed: {}", ec.message());
+        spdlog::debug("async write failed: {}", ec.message());
       }
     });
 }
@@ -147,7 +147,7 @@ void server_session::handle_read_confirmation(boost::system::error_code const &e
   const auto file_size = ifstream_.tellg();
   ifstream_.seekg(requested_.offset, ifstream_.beg);
 
-  spdlog::info("Start sending file: {}", requested_.file_info.file_name);
+  spdlog::debug("Start sending file: {}", requested_.file_info.file_name);
   spdlog::debug("FileSize: {}, Sha256sum: {}", file_size, requested_.file_info.sha256sum);
   write_file();
 }
@@ -179,7 +179,7 @@ void server_session::write_file()
       }
       else
       {
-        spdlog::info("async write failed: {}", ec.message());
+        spdlog::debug("async write failed: {}", ec.message());
       }
     });
 }

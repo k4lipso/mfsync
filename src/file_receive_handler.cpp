@@ -97,7 +97,7 @@ void file_receive_handler::request_file(available_file file)
     return;
   }
 
-  spdlog::info("adding file to request queue: {}", file.file_info.file_name);
+  spdlog::debug("adding file to request queue: {}", file.file_info.file_name);
   request_queue_.push_back(std::move(file));
 }
 

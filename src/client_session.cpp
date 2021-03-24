@@ -82,12 +82,12 @@ void client_session::request_file()
     [me = shared_from_this()](boost::system::error_code const &ec, std::size_t) {
       if(!ec)
       {
-        spdlog::info("Done requesting file!");
+        spdlog::debug("Done requesting file!");
         me->read_file_request_response();
       }
       else
       {
-        spdlog::info("async write failed: {}", ec.message());
+        spdlog::debug("async write failed: {}", ec.message());
       }
     });
 }
@@ -131,12 +131,12 @@ void client_session::handle_read_file_request_response(boost::system::error_code
       [me = shared_from_this()](boost::system::error_code const &ec, std::size_t) {
         if(!ec)
         {
-          spdlog::info("Done sending response");
+          spdlog::debug("Done sending response");
           me->read_file_chunk();
         }
         else
         {
-          spdlog::info("async write failed: {}", ec.message());
+          spdlog::debug("async write failed: {}", ec.message());
           me->handle_error();
         }
       });
@@ -155,7 +155,7 @@ void client_session::read_file_chunk()
 
   if(bytes_left <= 0)
   {
-    spdlog::info("complete file is written!");
+    spdlog::debug("complete file is written!");
     return;
   }
 
@@ -194,8 +194,8 @@ void client_session::handle_read_file_chunk(boost::system::error_code const &err
     return;
   }
 
-  spdlog::info("received file {}", requested_.file_info.file_name);
-  spdlog::info("with size in mb: {}", static_cast<double>(requested_.file_info.size / 1048576.0));
+  spdlog::debug("received file {}", requested_.file_info.file_name);
+  spdlog::debug("with size in mb: {}", static_cast<double>(requested_.file_info.size / 1048576.0));
 
   ofstream_.flush();
 
@@ -204,6 +204,8 @@ void client_session::handle_read_file_chunk(boost::system::error_code const &err
     spdlog::error("finalizing failed!!!");
     handle_error();
   }
+
+  spdlog::info("received file: {} - {} - {}", requested_.file_info.file_name, requested_.file_info.sha256sum, requested_.file_info.size);
 }
 
 void client_session::handle_error()

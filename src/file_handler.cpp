@@ -91,7 +91,7 @@ namespace mfsync
 
       const auto it_bool_pair = available_files_.insert(std::move(avail));
 
-      if(std::get<1>(it_bool_pair))
+      if(std::get<1>(it_bool_pair) && print_availables_)
       {
         spdlog::info("available: \"{}\" - {} - {}", (*std::get<0>(it_bool_pair)).file_info.file_name,
                                                     (*std::get<0>(it_bool_pair)).file_info.sha256sum,
@@ -233,11 +233,11 @@ namespace mfsync
 
     if(sha256sum.value() != file.sha256sum)
     {
-      spdlog::warn("Received file has different sha256sum than requested file! Aborting");
+      spdlog::info("Received file has different sha256sum than requested file! Aborting");
       return false;
     }
 
-    spdlog::info("finalizing file: {}", sha256sum.value());
+    spdlog::debug("finalizing file: {}", sha256sum.value());
 
     locked_files_.erase(std::remove_if(locked_files_.begin(), locked_files_.end(),
                         [&file](const auto& locked_file){ return file == locked_file.first; }),
@@ -270,6 +270,11 @@ namespace mfsync
     }
 
     return Input;
+  }
+
+  void file_handler::print_availables(bool value)
+  {
+      print_availables_ = value;
   }
 
   std::filesystem::path file_handler::get_tmp_path(const file_information& file_info) const

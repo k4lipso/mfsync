@@ -40,6 +40,8 @@ namespace mfsync
     bool finalize_file(const mfsync::file_information& file);
     std::optional<std::ifstream> read_file(const file_information& file_info);
 
+    void print_availables(bool value);
+
   private:
 
     std::filesystem::path get_tmp_path(const file_information& file_info) const;
@@ -65,6 +67,7 @@ namespace mfsync
     locked_files locked_files_;
 
     bool tmp_folder_initialized_ = false;
+    bool print_availables_ = false;
     static constexpr const char* TMP_FOLDER = ".mfsync";
 
     mutable std::mutex mutex_;

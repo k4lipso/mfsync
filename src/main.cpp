@@ -199,6 +199,11 @@ int main(int argc, char **argv)
     receiver->get_files();
   }
 
+  if(mode == operation_mode::FETCH)
+  {
+    file_handler.print_availables(true);
+  }
+
   io_service.run();
 
   }
