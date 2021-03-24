@@ -334,7 +334,7 @@ namespace mfsync
     return true;
   }
 
-  bool file_handler::update_available_files()
+  void file_handler::update_available_files()
   {
     for(auto it = available_files_.begin(); it != available_files_.end(); )
     {

@@ -45,7 +45,7 @@ namespace mfsync
     std::filesystem::path get_tmp_path(const file_information& file_info) const;
     std::filesystem::path get_storage_path(const file_information& file_info) const;
     bool update_stored_files();
-    bool update_available_files();
+    void update_available_files();
     void add_stored_file(file_information file);
     bool stored_file_exists(const file_information& file) const;
     bool stored_file_exists(const std::string& sha256sum) const;

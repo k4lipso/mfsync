@@ -100,6 +100,8 @@ int main(int argc, char **argv)
   //todo: check if multicast addr is valid
   const auto multicast_address = vm["multicast-address"].as<std::string>();
 
+  spdlog::set_pattern("%v");
+
   if(mode == operation_mode::NONE)
   {
     spdlog::info("The given operation mode is not known. Valid values are: sync, share, fetch, get");
@@ -146,10 +148,6 @@ int main(int argc, char **argv)
   if(vm.count("verbose"))
   {
     spdlog::set_level(spdlog::level::debug);
-  }
-  else
-  {
-    spdlog::set_pattern("%v");
   }
 
   auto file_handler = mfsync::file_handler{};
