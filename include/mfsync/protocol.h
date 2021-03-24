@@ -10,6 +10,7 @@ namespace mfsync::protocol
 {
   constexpr auto TCP_PORT = 8000;
   constexpr auto MULTICAST_PORT = 30001;
+  constexpr auto MULTICAST_LISTEN_ADDRESS = "0.0.0.0";
   constexpr auto MAX_MESSAGE_SIZE = 512;
   constexpr auto CHUNKSIZE = 1024;
   constexpr auto MFSYNC_HEADER_END = "<MFSYNC_HEADER_END>";

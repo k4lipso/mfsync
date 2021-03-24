@@ -57,7 +57,8 @@ int main(int argc, char **argv)
     ("request,r", po::value<std::vector<std::string>>()->multitoken()->zero_tokens(),
        "try download the files with the given hash. if no hash is give all available files are downloaded")
     ("port,p", po::value<unsigned short>(), "Manual specify tcp port to listen on. If not specified using default port 8000")
-    ("multicast-port,m", po::value<unsigned short>(), "Manual specify multicast port. If not specified using default port 30001");
+    ("multicast-port,m", po::value<unsigned short>(), "Manual specify multicast port. If not specified using default port 30001")
+    ("multicast-listen-address,l", po::value<std::string>(), "Manual specify multicast listen address. If not specified using 0.0.0.0");
 
   po::options_description hidden;
   hidden.add_options()
@@ -118,6 +119,7 @@ int main(int argc, char **argv)
 
   unsigned short port = mfsync::protocol::TCP_PORT;
   unsigned short multicast_port = mfsync::protocol::MULTICAST_PORT;
+  std::string multicast_listen_address = mfsync::protocol::MULTICAST_LISTEN_ADDRESS;
 
   if(vm.count("port"))
   {
@@ -127,6 +129,11 @@ int main(int argc, char **argv)
   if(vm.count("multicast-port"))
   {
     port = vm["multicast-port"].as<unsigned short>();
+  }
+
+  if(vm.count("multicast-listen-address"))
+  {
+    multicast_listen_address = vm["multicast-listen-address"].as<std::string>();
   }
 
   std::string destination_path;
@@ -174,7 +181,7 @@ int main(int argc, char **argv)
   if(mode != operation_mode::SHARE)
   {
     fetcher = std::make_unique<mfsync::multicast::file_fetcher>(io_service,
-                                    boost::asio::ip::address::from_string("0.0.0.0"),
+                                    boost::asio::ip::address::from_string(multicast_listen_address),
                                     boost::asio::ip::address::from_string(multicast_address),
                                     multicast_port,
                                     &file_handler);
