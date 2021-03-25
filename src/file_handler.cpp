@@ -197,7 +197,7 @@ namespace mfsync
       return std::nullopt;
     }
 
-    output.ofstream_.seekp(requested.offset, output.ofstream_.beg);
+    output.get_ofstream().seekp(requested.offset, output.get_ofstream().beg);
 
     auto token = std::make_shared<std::atomic<bool>>(true);
     output.set_token(token);

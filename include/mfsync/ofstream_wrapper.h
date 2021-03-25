@@ -27,11 +27,11 @@ public:
   std::ofstream::traits_type::pos_type tellp();
   void flush();
   void set_token(std::weak_ptr<std::atomic<bool>> token);
-
-  std::ofstream ofstream_;
+  std::ofstream& get_ofstream();
 
 private:
 
+  std::ofstream ofstream_;
   mfsync::requested_file requested_file_;
   std::weak_ptr<std::atomic<bool>> write_token_;
 };

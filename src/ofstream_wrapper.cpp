@@ -60,4 +60,9 @@ void ofstream_wrapper::set_token(std::weak_ptr<std::atomic<bool>> token)
   write_token_ = token;
 }
 
+std::ofstream& ofstream_wrapper::get_ofstream()
+{
+  return ofstream_;
+}
+
 } //closing namespace mfsync
