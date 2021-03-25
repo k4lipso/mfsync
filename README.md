@@ -60,9 +60,19 @@ You can clone the repo and use ```nix develop``` and ```nix build``` as wanted.
 
 If you just want to run the tool without cloning you can directly build it using:
 ```
-nix build github:k4lipso/mfsync    
+nix build github:k4lipso/mfsync
 ```
 
+## Firewall
+Per default mfsync listens on tcp port 8000 and upd port 30001. Depending on the mode you run mfsync in not all ports need to be opened.
+The table below shows which modes listen for tcp or upd packages depending on the mode.
+
+|                 | share           | fetch           | get             | sync            |
+| --------------- | --------------- | --------------- | --------------- | --------------- |
+| UPD             |                 | X               | X               | X               |
+| TCP             | X               |                 |                 | X               |
+
+An X means that the according port has to be openend by the firewall.
 
 ##### Todos:
 * allow secure file transfer using tls (this requires certificate generation on each host)
