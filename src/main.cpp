@@ -99,9 +99,15 @@ int main(int argc, char **argv)
 
   const auto mode = get_mode(vm["mode"].as<std::string>());
   //todo: check if multicast addr is valid
-  const auto multicast_address = vm["multicast-address"].as<std::string>();
 
-  spdlog::set_pattern("%v");
+  if(vm.count("verbose"))
+  {
+    spdlog::set_level(spdlog::level::debug);
+  }
+  else
+  {
+    spdlog::set_pattern("%v");
+  }
 
   if(mode == operation_mode::NONE)
   {
@@ -151,11 +157,6 @@ int main(int argc, char **argv)
 
   try
   {
-
-  if(vm.count("verbose"))
-  {
-    spdlog::set_level(spdlog::level::debug);
-  }
 
   auto file_handler = mfsync::file_handler{};
 
