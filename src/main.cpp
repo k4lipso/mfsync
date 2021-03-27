@@ -125,7 +125,7 @@ int main(int argc, char **argv)
 
   unsigned short port = mfsync::protocol::TCP_PORT;
   unsigned short multicast_port = mfsync::protocol::MULTICAST_PORT;
-  std::string multicast_listen_address = mfsync::protocol::MULTICAST_LISTEN_ADDRESS;
+  boost::asio::ip::address multicast_listen_address = boost::asio::ip::make_address(mfsync::protocol::MULTICAST_LISTEN_ADDRESS);
 
   if(vm.count("port"))
   {
@@ -137,9 +137,24 @@ int main(int argc, char **argv)
     port = vm["multicast-port"].as<unsigned short>();
   }
 
+  boost::system::error_code ec;
   if(vm.count("multicast-listen-address"))
   {
-    multicast_listen_address = vm["multicast-listen-address"].as<std::string>();
+    multicast_listen_address = boost::asio::ip::make_address(vm["multicast-listen-address"].as<std::string>(), ec);
+
+    if(ec)
+    {
+      spdlog::error("the given multicast listen address is not a valid ip address. aborting.");
+      return -1;
+    }
+  }
+
+  const auto multicast_address = boost::asio::ip::make_address(vm["multicast-address"].as<std::string>(), ec);
+
+  if(ec || !multicast_address.is_multicast())
+  {
+    spdlog::error("the given multicast address is not a valid multicast address. aborting.");
+    return -1;
   }
 
   std::string destination_path;
@@ -162,13 +177,15 @@ int main(int argc, char **argv)
 
   if(mode != operation_mode::FETCH)
   {
+    spdlog::info("start initializing storage. depending on filesizes this may take a while");
     file_handler.init_storage(destination_path);
+    spdlog::info("done initializing storage");
   }
 
   if(mode != operation_mode::FETCH && mode != operation_mode::GET)
   {
     sender = std::make_unique<mfsync::multicast::file_sender>(io_service,
-                                     boost::asio::ip::address::from_string(multicast_address),
+                                     multicast_address,
                                      multicast_port,
                                      port,
                                      file_handler);
@@ -182,8 +199,8 @@ int main(int argc, char **argv)
   if(mode != operation_mode::SHARE)
   {
     fetcher = std::make_unique<mfsync::multicast::file_fetcher>(io_service,
-                                    boost::asio::ip::address::from_string(multicast_listen_address),
-                                    boost::asio::ip::address::from_string(multicast_address),
+                                    multicast_listen_address,
+                                    multicast_address,
                                     multicast_port,
                                     &file_handler);
   }
