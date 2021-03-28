@@ -58,8 +58,6 @@ namespace mfsync
     bool exists_internal(const std::string& name) const;
     bool exists_internal(const file_information& file_info) const;
 
-    bool init_tmp_directory();
-
     std::filesystem::path storage_path_;
     stored_files stored_files_;
     available_files available_files_;
@@ -68,7 +66,7 @@ namespace mfsync
 
     bool tmp_folder_initialized_ = false;
     bool print_availables_ = false;
-    static constexpr const char* TMP_FOLDER = ".mfsync";
+    static constexpr const char* TMP_SUFFIX = ".mfsync";
 
     mutable std::mutex mutex_;
   };

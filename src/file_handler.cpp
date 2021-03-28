@@ -127,33 +127,6 @@ namespace mfsync
     return cv_new_available_file_;
   }
 
-  bool file_handler::init_tmp_directory()
-  {
-    if(tmp_folder_initialized_)
-    {
-      return true;
-    }
-
-    auto tmp_path = storage_path_;
-    tmp_path /= TMP_FOLDER;
-
-    if(std::filesystem::exists(tmp_path))
-    {
-      tmp_folder_initialized_ = true;
-      return true;
-    }
-
-    spdlog::debug("creating tmp_storage directory");
-    if(!std::filesystem::create_directory(tmp_path))
-    {
-      spdlog::error("could not create directoy in given storage path, check permissions");
-      return false;
-    }
-
-    tmp_folder_initialized_ = true;
-    return true;
-  }
-
   std::optional<mfsync::ofstream_wrapper> file_handler::create_file(requested_file& requested)
   {
     std::scoped_lock lk{mutex_};
@@ -276,7 +249,7 @@ namespace mfsync
   std::filesystem::path file_handler::get_tmp_path(const file_information& file_info) const
   {
     auto tmp_path = storage_path_;
-    tmp_path /= std::string{file_info.file_name + TMP_FOLDER}.c_str();
+    tmp_path /= std::string{file_info.file_name + TMP_SUFFIX}.c_str();
     return tmp_path;
   }
 
@@ -308,7 +281,7 @@ namespace mfsync
     {
       const std::string name = entry.path().filename().string();
 
-      if(name.ends_with(TMP_FOLDER))
+      if(name.ends_with(TMP_SUFFIX))
       {
         continue;
       }
