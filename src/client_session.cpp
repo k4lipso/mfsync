@@ -104,7 +104,8 @@ void client_session::read_file_request_response()
     });
 }
 
-void client_session::handle_read_file_request_response(boost::system::error_code const &error, std::size_t bytes_transferred)
+void client_session::handle_read_file_request_response(boost::system::error_code const &error,
+                                                       std::size_t bytes_transferred)
 {
   if(!error)
   {
@@ -175,7 +176,8 @@ void client_session::read_file_chunk()
 }
 
 
-void client_session::handle_read_file_chunk(boost::system::error_code const &error, std::size_t bytes_transferred)
+void client_session::handle_read_file_chunk(boost::system::error_code const &error,
+                                            std::size_t bytes_transferred)
 {
   if(error)
   {
@@ -201,11 +203,13 @@ void client_session::handle_read_file_chunk(boost::system::error_code const &err
 
   if(!file_handler_.finalize_file(requested_.file_info))
   {
-    spdlog::error("finalizing failed!!!");
+    spdlog::debug("finalizing failed!!!");
     handle_error();
   }
 
-  spdlog::info("received file: {} - {} - {}", requested_.file_info.file_name, requested_.file_info.sha256sum, requested_.file_info.size);
+  spdlog::info("received file: {} - {} - {}", requested_.file_info.file_name,
+                                              requested_.file_info.sha256sum,
+                                              requested_.file_info.size);
 }
 
 void client_session::handle_error()
