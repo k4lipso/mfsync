@@ -212,18 +212,21 @@ namespace mfsync
 
     if(exists_internal(file))
     {
-      spdlog::debug("Tried finalizing file that already exists");
+      spdlog::debug("tried finalizing file that already exists");
       return false;
     }
 
     if(!is_blocked_internal(file))
     {
-      spdlog::debug("Tried finalizing file that was not blocked");
+      spdlog::debug("tried finalizing file that was not blocked");
       return false;
     }
 
+
+    spdlog::debug("calculate sha256sum of {}", file.file_name);
     const auto tmp_path = get_tmp_path(file);
     const auto sha256sum = file_information::get_sha256sum(tmp_path);
+
 
     if(!sha256sum.has_value())
     {
@@ -233,17 +236,17 @@ namespace mfsync
 
     if(sha256sum.value() != file.sha256sum)
     {
-      spdlog::info("Received file has different sha256sum than requested file! Aborting");
+      spdlog::info("received file has different sha256sum than requested file! Aborting");
       return false;
     }
 
-    spdlog::debug("finalizing file: {}", sha256sum.value());
-
+    spdlog::debug("shasum256 of {} is correct. adding file to storage.", file.file_name);
     locked_files_.erase(std::remove_if(locked_files_.begin(), locked_files_.end(),
                         [&file](const auto& locked_file){ return file == locked_file.first; }),
                         locked_files_.end());
 
     std::filesystem::rename(tmp_path, get_storage_path(file));
+    add_stored_file(file);
     update_stored_files();
     return true;
   }
