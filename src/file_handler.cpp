@@ -156,11 +156,6 @@ namespace mfsync
 
   std::optional<mfsync::ofstream_wrapper> file_handler::create_file(requested_file& requested)
   {
-    if(!init_tmp_directory())
-    {
-      return std::nullopt;
-    }
-
     std::scoped_lock lk{mutex_};
     if(exists_internal(requested.file_info) || is_blocked_internal(requested.file_info))
     {
@@ -168,8 +163,6 @@ namespace mfsync
       return std::nullopt;
     }
 
-    //Update FileInfo::offset, this way GetFile::create_request requests with correct offset
-    //if file was partly received before
     const auto tmp_path = get_tmp_path(requested.file_info);
     const auto file_exists = std::filesystem::exists(tmp_path);
 
@@ -283,8 +276,7 @@ namespace mfsync
   std::filesystem::path file_handler::get_tmp_path(const file_information& file_info) const
   {
     auto tmp_path = storage_path_;
-    tmp_path /= TMP_FOLDER;
-    tmp_path /= file_info.file_name.c_str();
+    tmp_path /= std::string{file_info.file_name + TMP_FOLDER}.c_str();
     return tmp_path;
   }
 
@@ -316,7 +308,7 @@ namespace mfsync
     {
       const std::string name = entry.path().filename().string();
 
-      if(name == TMP_FOLDER)
+      if(name.ends_with(TMP_FOLDER))
       {
         continue;
       }
