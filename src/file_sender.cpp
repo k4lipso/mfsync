@@ -12,10 +12,7 @@ namespace mfsync::multicast
     , timer_(io_service)
     , port_(tcp_port)
     , file_handler_(filehandler)
-
-  {
-    init();
-  }
+  {}
 
   void file_sender::init()
   {
@@ -35,7 +32,12 @@ namespace mfsync::multicast
           std::bind(&file_sender::handle_send_to, this,
             std::placeholders::_1));
     }
+  }
 
+  void file_sender::set_outbound_interface(const boost::asio::ip::address_v4& address)
+  {
+    boost::asio::ip::multicast::outbound_interface option(address);
+    socket_.set_option(option);
   }
 
   void file_sender::handle_send_to(const boost::system::error_code& error)

@@ -24,6 +24,7 @@ namespace mfsync::multicast
                 file_handler& filehandler);
 
     void init();
+    void set_outbound_interface(const boost::asio::ip::address_v4& address);
     void handle_send_to(const boost::system::error_code& error);
     void handle_timeout(const boost::system::error_code& error);
 

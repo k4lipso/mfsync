@@ -58,7 +58,8 @@ int main(int argc, char **argv)
        "try download the files with the given hash. if no hash is give all available files are downloaded")
     ("port,p", po::value<unsigned short>(), "Manual specify tcp port to listen on. If not specified using default port 8000")
     ("multicast-port,m", po::value<unsigned short>(), "Manual specify multicast port. If not specified using default port 30001")
-    ("multicast-listen-address,l", po::value<std::string>(), "Manual specify multicast listen address. If not specified using 0.0.0.0");
+    ("multicast-listen-address,l", po::value<std::string>(), "Manual specify multicast listen address. If not specified using 0.0.0.0")
+    ("outbound-address,o", po::value<std::string>(), "Manual specify multicast outbound interface address.");
 
   po::options_description hidden;
   hidden.add_options()
@@ -126,6 +127,7 @@ int main(int argc, char **argv)
   unsigned short port = mfsync::protocol::TCP_PORT;
   unsigned short multicast_port = mfsync::protocol::MULTICAST_PORT;
   boost::asio::ip::address multicast_listen_address = boost::asio::ip::make_address(mfsync::protocol::MULTICAST_LISTEN_ADDRESS);
+  boost::asio::ip::address outbound_address;
 
   if(vm.count("port"))
   {
@@ -145,6 +147,17 @@ int main(int argc, char **argv)
     if(ec)
     {
       spdlog::error("the given multicast listen address is not a valid ip address. aborting.");
+      return -1;
+    }
+  }
+
+  if(vm.count("outbound-address"))
+  {
+    outbound_address = boost::asio::ip::make_address(vm["outbound-address"].as<std::string>(), ec);
+
+    if(ec)
+    {
+      spdlog::error("the given multicast sender address is not a valid ip address. aborting.");
       return -1;
     }
   }
@@ -185,10 +198,24 @@ int main(int argc, char **argv)
   if(mode != operation_mode::FETCH && mode != operation_mode::GET)
   {
     sender = std::make_unique<mfsync::multicast::file_sender>(io_service,
-                                     multicast_address,
-                                     multicast_port,
-                                     port,
-                                     file_handler);
+                                                              multicast_address,
+                                                              multicast_port,
+                                                              port,
+                                                              file_handler);
+    if(!outbound_address.is_unspecified())
+    {
+      if(outbound_address.is_v4())
+      {
+        spdlog::debug("setting multicast outbound interface address to {}", outbound_address.to_string());
+        sender->set_outbound_interface(outbound_address.to_v4());
+      }
+      else
+      {
+        spdlog::info("setting multicast outbound interface address to non v4 address has no effect");
+      }
+    }
+
+    sender->init();
 
     file_server = std::make_unique<mfsync::filetransfer::server>(io_service,
                                                                  port,
