@@ -8,6 +8,9 @@
 
 #include "spdlog/spdlog.h"
 
+#include <ifaddrs.h>
+#include <sys/types.h>
+
 #include "mfsync/file_handler.h"
 #include "mfsync/file_sender.h"
 #include "mfsync/file_fetcher.h"
@@ -25,6 +28,33 @@ enum class operation_mode
   GET,
   NONE
 };
+
+inline std::vector<boost::asio::ip::address>
+get_ip_addresses_by_interface_name(const std::vector<std::string>& interface_names)
+{
+  std::vector<boost::asio::ip::address> result;
+  struct ifaddrs *interfaces = nullptr;
+  struct ifaddrs *temp_addr = nullptr;
+
+  if (getifaddrs(&interfaces) == 0) {
+    temp_addr = interfaces;
+
+    while(temp_addr != nullptr) {
+      if(temp_addr->ifa_addr->sa_family == AF_INET) {
+
+        if(std::any_of(interface_names.begin(), interface_names.end(),
+                       [&](const auto name){ return name.compare(temp_addr->ifa_name) == 0; }))
+        {
+          result.emplace_back(boost::asio::ip::make_address(inet_ntoa(((struct sockaddr_in*)temp_addr->ifa_addr)->sin_addr)));
+        }
+      }
+      temp_addr = temp_addr->ifa_next;
+    }
+  }
+
+  freeifaddrs(interfaces); //freedom is not given, it is taken
+  return result;
+}
 
 inline operation_mode get_mode(const std::string& input)
 {
