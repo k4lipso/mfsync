@@ -35,8 +35,8 @@ namespace mfsync::multicast
     std::scoped_lock lk{mutex_};
     if (!error)
     {
-      spdlog::debug("Received Message: '{}'", std::string(data_, bytes_recvd));
-      spdlog::debug("From: {}", boost::lexical_cast<std::string>(sender_endpoint_.address()));
+      spdlog::trace("Received Message: '{}'", std::string(data_, bytes_recvd));
+      spdlog::trace("From: {}", boost::lexical_cast<std::string>(sender_endpoint_.address()));
 
       auto available = mfsync::protocol::get_available_files_from_message(std::string(data_, bytes_recvd),
                                                                     sender_endpoint_);

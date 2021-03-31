@@ -54,6 +54,7 @@ int main(int argc, char **argv)
   description.add_options()
     ("help,h", "Display help message")
     ("verbose,v", "Show debug logs")
+    ("trace,t", "Show sent and received multicast messages")
     ("request,r", po::value<std::vector<std::string>>()->multitoken()->zero_tokens(),
        "try download the files with the given hash. if no hash is give all available files are downloaded")
     ("port,p", po::value<unsigned short>(), "Manual specify tcp port to listen on. If not specified using default port 8000")
@@ -101,7 +102,11 @@ int main(int argc, char **argv)
   const auto mode = get_mode(vm["mode"].as<std::string>());
   //todo: check if multicast addr is valid
 
-  if(vm.count("verbose"))
+  if(vm.count("trace"))
+  {
+    spdlog::set_level(spdlog::level::trace);
+  }
+  else if(vm.count("verbose"))
   {
     spdlog::set_level(spdlog::level::debug);
   }

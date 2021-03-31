@@ -68,7 +68,7 @@ namespace mfsync::multicast
           continue;
         }
 
-        spdlog::debug("Sending Message: '{}'", message);
+        spdlog::trace("Sending Message: '{}'", message);
         socket_.async_send_to(
             boost::asio::buffer(message), endpoint_,
             std::bind(&file_sender::handle_send_to, this,
