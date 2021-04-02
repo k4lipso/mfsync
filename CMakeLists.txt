@@ -19,8 +19,6 @@ endif()
 
 
 find_package(Threads REQUIRED)
-find_package(SQLite3 REQUIRED)
-find_package(SQLite3 REQUIRED)
 find_package(OpenSSL REQUIRED COMPONENTS SSL Crypto EXACT)
 
 if(NOT TARGET spdlog)
