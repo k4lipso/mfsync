@@ -28,6 +28,7 @@ namespace mfsync
   bool file_handler::can_be_stored(const file_information& file_info) const
   {
     static_cast<void>(file_info);
+    spdlog::debug("can_be_stored: function not implemented yet");
     //TODO: check if enough space for storing
     return true;
   }
@@ -93,8 +94,8 @@ namespace mfsync
 
       if(std::get<1>(it_bool_pair) && print_availables_)
       {
-        spdlog::info("available: \"{}\" - {} - {}", (*std::get<0>(it_bool_pair)).file_info.file_name,
-                                                    (*std::get<0>(it_bool_pair)).file_info.sha256sum,
+        spdlog::info("available: \"{}\" - {} - {}", (*std::get<0>(it_bool_pair)).file_info.sha256sum,
+                                                    (*std::get<0>(it_bool_pair)).file_info.file_name,
                                                     (*std::get<0>(it_bool_pair)).file_info.size);
         changed = true;
       }
@@ -264,7 +265,6 @@ namespace mfsync
   {
     if(storage_path_.empty())
     {
-      spdlog::debug("cant update storage, no storage path was given");
       return false;
     }
 
@@ -328,13 +328,9 @@ namespace mfsync
 
     if(std::get<1>(result))
     {
-      spdlog::debug("adding file to storage: \"{}\" - {} - {}", (*std::get<0>(result)).file_name,
-                                            (*std::get<0>(result)).sha256sum,
+      spdlog::debug("adding file to storage: \"{}\" - {} - {}", (*std::get<0>(result)).sha256sum,
+                                            (*std::get<0>(result)).file_name,
                                             (*std::get<0>(result)).size);
-    }
-    else
-    {
-      spdlog::debug("file already exists");
     }
   }
 

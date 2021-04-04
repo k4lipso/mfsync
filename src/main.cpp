@@ -45,7 +45,9 @@ get_ip_addresses_by_interface_name(const std::vector<std::string>& interface_nam
         if(std::any_of(interface_names.begin(), interface_names.end(),
                        [&](const auto name){ return name.compare(temp_addr->ifa_name) == 0; }))
         {
-          result.emplace_back(boost::asio::ip::make_address(inet_ntoa(((struct sockaddr_in*)temp_addr->ifa_addr)->sin_addr)));
+          result.emplace_back(
+                boost::asio::ip::make_address(
+                  inet_ntoa(((struct sockaddr_in*)temp_addr->ifa_addr)->sin_addr)));
         }
       }
       temp_addr = temp_addr->ifa_next;
@@ -162,7 +164,8 @@ int main(int argc, char **argv)
 
   unsigned short port = mfsync::protocol::TCP_PORT;
   unsigned short multicast_port = mfsync::protocol::MULTICAST_PORT;
-  boost::asio::ip::address multicast_listen_address = boost::asio::ip::make_address(mfsync::protocol::MULTICAST_LISTEN_ADDRESS);
+  boost::asio::ip::address multicast_listen_address =
+      boost::asio::ip::make_address(mfsync::protocol::MULTICAST_LISTEN_ADDRESS);
   std::vector<boost::asio::ip::address> outbound_addresses { boost::asio::ip::address{} };
 
   if(vm.count("port"))
@@ -178,7 +181,8 @@ int main(int argc, char **argv)
   boost::system::error_code ec;
   if(vm.count("multicast-listen-address"))
   {
-    multicast_listen_address = boost::asio::ip::make_address(vm["multicast-listen-address"].as<std::string>(), ec);
+    multicast_listen_address =
+        boost::asio::ip::make_address(vm["multicast-listen-address"].as<std::string>(), ec);
 
     if(ec)
     {

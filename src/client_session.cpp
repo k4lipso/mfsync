@@ -29,7 +29,6 @@ void client_session::start_request()
 
   if(!available.has_value())
   {
-    spdlog::debug("no available file in queue. aborting request");
     return;
   }
 

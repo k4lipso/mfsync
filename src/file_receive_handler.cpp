@@ -78,7 +78,6 @@ void file_receive_handler::try_start_new_session()
 {
   //TODO: available file should be popped by session itself. just check if request_queue_ is empty, and if not create session
   //the session then takes the first available file from the queue itself.
-  spdlog::debug("creating new session");
   auto session = std::make_shared<mfsync::filetransfer::client_session>(io_context_,
                                                                         request_queue_,
                                                                         file_handler_);
