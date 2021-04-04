@@ -137,6 +137,12 @@ namespace mfsync
       return std::nullopt;
     }
 
+    if(!can_be_stored(requested.file_info))
+    {
+      spdlog::debug("file {} cant be stored. aborting file creation", requested.file_info.sha256sum);
+      return std::nullopt;
+    }
+
     const auto tmp_path = get_tmp_path(requested.file_info);
     const auto file_exists = std::filesystem::exists(tmp_path);
 
