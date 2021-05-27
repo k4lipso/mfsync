@@ -39,7 +39,7 @@ void file_receive_handler::get_files()
 
   if(!session_.expired())
   {
-    wait_for_new_files();
+    wait();
     return;
   }
 
@@ -49,11 +49,11 @@ void file_receive_handler::get_files()
   {
     for(auto& available : availables)
     {
-      request_file(std::move(available));
+      add_to_request_queue(std::move(available));
     }
 
-    try_start_new_session();
-    wait_for_new_files();
+    start_new_session();
+    wait();
     return;
   }
 
@@ -66,18 +66,16 @@ void file_receive_handler::get_files()
       continue;
     }
 
-    request_file(*it);
+    add_to_request_queue(*it);
     sha256sum = "DONE";
   }
 
-  try_start_new_session();
-  wait_for_new_files();
+  start_new_session();
+  wait();
 }
 
-void file_receive_handler::try_start_new_session()
+void file_receive_handler::start_new_session()
 {
-  //TODO: available file should be popped by session itself. just check if request_queue_ is empty, and if not create session
-  //the session then takes the first available file from the queue itself.
   auto session = std::make_shared<mfsync::filetransfer::client_session>(io_context_,
                                                                         request_queue_,
                                                                         file_handler_);
@@ -86,12 +84,12 @@ void file_receive_handler::try_start_new_session()
   session->start_request();
 }
 
-void file_receive_handler::request_file(available_file file)
+void file_receive_handler::add_to_request_queue(available_file file)
 {
-  auto pred = [&file](const auto& request_file)
+  const auto equal_shasum = [&file](const auto& request_file)
      { return file.file_info.sha256sum == request_file.file_info.sha256sum; };
 
-  if(request_queue_.contains(pred))
+  if(request_queue_.contains(equal_shasum))
   {
     return;
   }
@@ -100,7 +98,7 @@ void file_receive_handler::request_file(available_file file)
   request_queue_.push_back(std::move(file));
 }
 
-void file_receive_handler::wait_for_new_files()
+void file_receive_handler::wait()
 {
   timer_.expires_from_now(boost::posix_time::seconds(1));
   timer_.async_wait(

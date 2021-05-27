@@ -30,9 +30,9 @@ public:
 
 private:
 
-  void try_start_new_session();
-  void request_file(available_file file);
-  void wait_for_new_files();
+  void start_new_session();
+  void add_to_request_queue(available_file file);
+  void wait();
   void handle_timeout(const boost::system::error_code& error);
 
   boost::asio::io_context& io_context_;
