@@ -174,7 +174,6 @@ void server_session::write_file()
     [me = shared_from_this()](boost::system::error_code const &ec, std::size_t) {
       if(!ec)
       {
-        spdlog::debug("sent chunk, sending next");
         me->write_file();
       }
       else

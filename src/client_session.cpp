@@ -109,21 +109,24 @@ void client_session::handle_read_file_request_response(boost::system::error_code
   if(!error)
   {
     boost::asio::streambuf::const_buffers_type bufs = stream_buffer_.data();
-    std::string line(
+    std::string response_message(
       boost::asio::buffers_begin(bufs),
-      boost::asio::buffers_begin(bufs) + bytes_transferred);;
+      boost::asio::buffers_begin(bufs) + bytes_transferred);
 
-    spdlog::debug("Received file_request_response: {}", line);
+    stream_buffer_.consume(bytes_transferred);
 
-    if(line != protocol::create_begin_transmission_message())
+    spdlog::debug("Received file_request_response: {}", response_message);
+
+    if(response_message != protocol::create_begin_transmission_message())
     {
-      spdlog::debug("Server returned with error: {}", line);
+      spdlog::debug("Server returned with error: {}", response_message);
       handle_error();
       return;
     }
 
-    message_ = protocol::create_begin_transmission_message();
+    message_ = std::move(response_message);
     spdlog::debug("Sending response: {}", message_);
+
     bytes_written_to_requested_ = requested_.offset;
 
     async_write(socket_,
@@ -204,11 +207,15 @@ void client_session::handle_read_file_chunk(boost::system::error_code const &err
   {
     spdlog::debug("finalizing failed!!!");
     handle_error();
+    return;
   }
 
   spdlog::info("received file: {} - {} - {}", requested_.file_info.file_name,
                                               requested_.file_info.sha256sum,
                                               requested_.file_info.size);
+
+  readbuf_.clear();
+  start_request();
 }
 
 void client_session::handle_error()
