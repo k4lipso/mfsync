@@ -76,5 +76,7 @@ An X means that the according port has to be openend by the firewall.
 
 ##### Todos:
 * allow secure file transfer using tls (this requires certificate generation on each host)
+* add --timeout to end execution after given period
+  * also finish 'mfsync get' if --request was specified and all specified files are downloaded
 * eventually switch from self made network protocol to something json like
 * many more that iam not aware of right now
