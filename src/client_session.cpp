@@ -191,7 +191,6 @@ void client_session::handle_read_file_chunk(boost::system::error_code const &err
   ofstream_.write(reinterpret_cast<char*>(readbuf_.data()), bytes_transferred, bytes_written_to_requested_);
   bytes_written_to_requested_ += bytes_transferred;
 
-  spdlog::debug("received. bytes written: {} of: {}", ofstream_.tellp(), requested_.file_info.size);
   if(ofstream_.tellp() < static_cast<std::streamsize>(requested_.file_info.size))
   {
     read_file_chunk();
