@@ -67,11 +67,25 @@ void file_receive_handler::get_files()
     }
 
     add_to_request_queue(*it);
-    sha256sum = "DONE";
+  }
+
+  //clean files_to_request
+  files_to_request_.erase(std::remove_if(files_to_request_.begin(), files_to_request_.end(),
+                      [this](const auto& sha256sum){ return file_handler_.is_stored(sha256sum); }),
+                      files_to_request_.end());
+
+  if(files_to_request_.empty())
+  {
+    promise_.set_value();
   }
 
   start_new_session();
   wait();
+}
+
+std::future<void> file_receive_handler::get_future()
+{
+  return promise_.get_future();
 }
 
 void file_receive_handler::start_new_session()

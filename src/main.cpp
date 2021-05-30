@@ -340,7 +340,30 @@ int main(int argc, char **argv)
     file_handler.print_availables(true);
   }
 
-  io_service.run();
+  std::vector<std::thread> workers;
+  for(int i = 0; i < std::thread::hardware_concurrency(); ++i)
+  {
+    workers.emplace_back([&io_service](){ io_service.run(); });
+  }
+
+  if(receiver != nullptr)
+  {
+    auto f = receiver->get_future();
+    f.wait();
+  }
+  else
+  {
+    //sleep forever
+    std::this_thread::sleep_until(std::chrono::system_clock::now()
+                                  + std::chrono::hours(std::numeric_limits<int>::max()));
+  }
+
+  io_service.stop();
+
+  for(auto& worker : workers)
+  {
+    worker.join();
+  }
 
   }
   catch (std::exception& e)

@@ -27,6 +27,7 @@ public:
   void set_files(std::vector<std::string> files_to_request);
   void request_all_files();
   void get_files();
+  std::future<void> get_future();
 
 private:
 
@@ -42,6 +43,7 @@ private:
   mfsync::concurrent::deque<available_file> request_queue_;
   bool request_all_;
   std::weak_ptr<mfsync::filetransfer::client_session> session_;
+  std::promise<void> promise_;
   mutable std::mutex mutex_;
 };
 
