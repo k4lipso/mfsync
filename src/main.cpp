@@ -92,8 +92,10 @@ int main(int argc, char **argv)
     ("port,p", po::value<unsigned short>(), "Manual specify tcp port to listen on. If not specified using default port 8000")
     ("multicast-port,m", po::value<unsigned short>(), "Manual specify multicast port. If not specified using default port 30001")
     ("multicast-listen-address,l", po::value<std::string>(), "Manual specify multicast listen address. If not specified using 0.0.0.0")
+    ("wait-until,w", po::value<int>(), "stop program execution after the given amount of seconds.")
     ("outbound-addresses,a", po::value<std::vector<std::string>>()->multitoken(), "Manual specify multicast outbound interface addresses.")
-    ("outbound-interfaces,i", po::value<std::vector<std::string>>()->multitoken(), "Manual specify multicast outbound interface names. Multicast messages will be sent to the given interfaces");
+    ("outbound-interfaces,i", po::value<std::vector<std::string>>()->multitoken(),
+                              "Manual specify multicast outbound interface names. Multicast messages will be sent to the given interfaces");
 
   po::options_description hidden;
   hidden.add_options()
@@ -341,21 +343,29 @@ int main(int argc, char **argv)
   }
 
   std::vector<std::thread> workers;
-  for(int i = 0; i < std::thread::hardware_concurrency(); ++i)
+  for(unsigned i = 0; i < std::thread::hardware_concurrency(); ++i)
   {
     workers.emplace_back([&io_service](){ io_service.run(); });
   }
 
-  if(receiver != nullptr)
+  auto timeout = std::chrono::system_clock::now();
+  if(vm.count("wait-until"))
   {
-    auto f = receiver->get_future();
-    f.wait();
+    timeout += std::chrono::seconds(vm["wait-until"].as<int>());
   }
   else
   {
-    //sleep forever
-    std::this_thread::sleep_until(std::chrono::system_clock::now()
-                                  + std::chrono::hours(std::numeric_limits<int>::max()));
+    timeout += std::chrono::hours(std::numeric_limits<int>::max());
+  }
+
+  if(receiver != nullptr)
+  {
+    auto future = receiver->get_future();
+    future.wait_until(timeout);
+  }
+  else
+  {
+    std::this_thread::sleep_until(timeout);
   }
 
   io_service.stop();
