@@ -4,3 +4,4 @@ result
 build
 CMakeLists.txt.user
 .envrc
+*.autosave
