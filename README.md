@@ -64,12 +64,12 @@ nix build github:k4lipso/mfsync
 ```
 
 ## Firewall
-Per default mfsync listens on tcp port 8000 and upd port 30001. Depending on the mode you run mfsync in not all ports need to be opened.
-The table below shows which modes listen for tcp or upd packages depending on the mode.
+Per default mfsync listens on tcp port 8000 and udp port 30001. Depending on the mode you run mfsync in not all ports need to be opened.
+The table below shows which modes listen for tcp or udp packages depending on the mode.
 
 |                 | share           | fetch           | get             | sync            |
 | --------------- | --------------- | --------------- | --------------- | --------------- |
-| UPD             |                 | X               | X               | X               |
+| UDP             |                 | X               | X               | X               |
 | TCP             | X               |                 |                 | X               |
 
 An X means that the according port has to be openend by the firewall.
