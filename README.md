@@ -12,7 +12,7 @@ The motivation to write this tool is to have an easy way to backup files on mult
 
 ## Modes:
 ### mfsync share
-'mfsync share' basicly enables every other computer in the network to download files from the sharing host.
+'mfsync share' basically enables every other computer in the network to download files from the sharing host.
 The sharing host announces all given files to the multicast group. Those files can then be downloaded from the host using mfsync on another machine.
 ```
 mfsync share 239.255.0.1 ./destination
@@ -37,7 +37,7 @@ mfsync get 239.255.0.1 --request sha256sum1 sha256sum2 -- ./destination
   * if no --request flag is set, all files are downloaded
 
 ### mfsync sync
-'mfsync sync' is basicly a combination of 'mfsync share' and 'mfsync get'. It announces all given files and also retreives all available files that are not stored locally already. Files that where retrieved are then also shared again.
+'mfsync sync' is basically a combination of 'mfsync share' and 'mfsync get'. It announces all given files and also retreives all available files that are not stored locally already. Files that where retrieved are then also shared again.
 ```
 mfsync sync 239.255.0.1 ./destination
 ```
