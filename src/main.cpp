@@ -17,17 +17,10 @@
 #include "mfsync/file_receive_handler.h"
 #include "mfsync/protocol.h"
 #include "mfsync/server.h"
+#include "mfsync/misc.h"
+#include "mfsync/help_messages.h"
 
 namespace po = boost::program_options;
-
-enum class operation_mode
-{
-  SYNC,
-  SHARE,
-  FETCH,
-  GET,
-  NONE
-};
 
 inline std::vector<boost::asio::ip::address>
 get_ip_addresses_by_interface_name(const std::vector<std::string>& interface_names)
@@ -57,121 +50,6 @@ get_ip_addresses_by_interface_name(const std::vector<std::string>& interface_nam
   freeifaddrs(interfaces); //freedom is not given, it is taken
   return result;
 }
-
-inline operation_mode get_mode(const std::string& input)
-{
-  const std::map<std::string, operation_mode> mode_map
-  {
-    { "sync", operation_mode::SYNC },
-    { "share", operation_mode::SHARE },
-    { "fetch", operation_mode::FETCH },
-    { "get", operation_mode::GET },
-  };
-
-  if(!mode_map.contains(input))
-  {
-    return operation_mode::NONE;
-  }
-
-  return mode_map.at(input);
-}
-
-std::string_view get_help_message(operation_mode mode)
-{
-  constexpr std::string_view help_general{R"""(mfsync - multicast filesharing from the commandline
-
-Usage: mfsync [share|fetch|get|sync] multicast-group [options]
-  Use "mfsync [share|fetch|get|sync] --help" for mode specific help message
-
-Options)"""};
-
-  constexpr std::string_view help_share{R"""(mfsync share - share files within the multicast group
-
-Usage: mfsync share multicast-group [options] path-to-folder
-
-Description:
-  'mfsync share' basically enables every other computer in the network to download files
-  from the sharing host. The sharing host announces all given files to the multicast group.
-  Those files can then be downloaded from the host using mfsync on another machine.
-
-Examples:
-  "mfsync share 239.255.0.1 ./destination"
-    - shares all available files but does not download new ones
-
-Options)"""};
-
-  constexpr std::string_view help_fetch{R"""(mfsync fetch - fetch available files within the multicast group
-
-Usage: mfsync fetch multicast-group [options]
-
-Description:
-  'mfsync fetch' "passively" listens to all announced files in the multicast group
-  and prints them to stdout. This mode is used to get a list of all files that are currently
-  made available within the multicast group.
-
-Examples:
-  "mfsync fetch 239.255.0.1"
-    - requests names of all available files in the network and prints them to stdout
-    - this runs forever
-
-  "mfsync fetch 239.255.0.1 --wait-until 3
-    - requests names of all available files in the network and prints them to stdout
-    - execution is stopped after 3 seconds
-
-Options)"""};
-
-  constexpr std::string_view help_get{R"""(mfsync get - get files that are available within the multicast group
-
-Usage: mfsync get multicast-group [options] path-to-folder
-
-Description:
-  'mfsync get' retreives all specified files.
-  The files are specified by their sha256sum which can be seen when using 'mfsync fetch'.
-  If no files are specified all announced files will be retreived.
-
-Examples:
-  "mfsync get 239.255.0.1 ./destination"
-    - download all available files
-    - runs forever if no --wait-until is given
-
-  "mfsync get 239.255.0.1 --request sha256sum1 sha256sum2 -- ./destination"
-    - downloads files with the given sha256sums to given destination if available
-    - waits till all given files are downloaded
-    - can abort earlier if --wait-until is specified
-
-Options)"""};
-
-  constexpr std::string_view help_sync{R"""(mfsync sync - share all files and download all files
-
-Usage: mfsync sync multicast-group [options] path-to-folder
-
-Description:
-  'mfsync sync' is basically a combination of 'mfsync share' and 'mfsync get'.
-  It announces all given files and also retreives all available files that are not stored locally already.
-  Files that where retrieved are then also shared again.
-
-Examples:
-  "mfsync sync 239.255.0.1 ./destination"
-    - share and get all available files
-
-Options)"""};
-
-  switch(mode)
-  {
-    case operation_mode::SHARE:
-      return help_share;
-    case operation_mode::FETCH:
-      return help_fetch;
-    case operation_mode::GET:
-      return help_get;
-    case operation_mode::SYNC:
-      return help_sync;
-    case operation_mode::NONE:
-  default:
-    return help_general;
-  }
-}
-
 
 int main(int argc, char **argv)
 {
@@ -227,7 +105,7 @@ int main(int argc, char **argv)
   {
     if(vm.count("mode"))
     {
-      usage_message = get_help_message(get_mode(vm["mode"].as<std::string>()));
+      usage_message = get_help_message(misc::get_mode(vm["mode"].as<std::string>()));
     }
     print_help();
     return 0;
@@ -239,7 +117,7 @@ int main(int argc, char **argv)
     return 0;
   }
 
-  const auto mode = get_mode(vm["mode"].as<std::string>());
+  const auto mode = misc::get_mode(vm["mode"].as<std::string>());
   //todo: check if multicast addr is valid
 
   if(vm.count("trace"))
