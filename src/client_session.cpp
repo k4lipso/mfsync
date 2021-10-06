@@ -1,24 +1,82 @@
 #include "mfsync/client_session.h"
 
 #include <boost/bind.hpp>
-
 #include "spdlog/spdlog.h"
-
 #include "mfsync/protocol.h"
 
 namespace mfsync::filetransfer
 {
 
-client_session::client_session(boost::asio::io_context& context,
-               mfsync::concurrent::deque<available_file>& deque,
-               mfsync::file_handler& handler)
+template<typename SocketType>
+client_session_base<SocketType>::client_session_base(boost::asio::io_context& context,
+                                                     SocketType socket,
+                                                     mfsync::concurrent::deque<available_file>& deque,
+                                                     mfsync::file_handler& handler)
   : io_context_(context)
-  , socket_(context)
+  , socket_(std::move(socket))
   , deque_(deque)
   , file_handler_(handler)
 {}
 
-boost::asio::ip::tcp::socket& client_session::get_socket()
+client_session::client_session(boost::asio::io_context& context,
+                               boost::asio::ip::tcp::socket socket,
+                               mfsync::concurrent::deque<available_file>& deque,
+                               mfsync::file_handler& handler)
+  : client_session_base<boost::asio::ip::tcp::socket>(context, std::move(socket), deque, handler)
+{}
+
+client_tls_session::client_tls_session(boost::asio::io_context& context,
+                                       boost::asio::ssl::stream<boost::asio::ip::tcp::socket> socket,
+                                       mfsync::concurrent::deque<available_file>& deque,
+                                       mfsync::file_handler& handler)
+  : client_session_base<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>(context,
+                                                                                std::move(socket),
+                                                                                deque,
+                                                                                handler)
+{
+  socket_.set_verify_mode(boost::asio::ssl::verify_peer);
+  socket_.set_verify_callback(std::bind(&client_tls_session::verify_certificate,
+                                        this,
+                                        std::placeholders::_1,
+                                        std::placeholders::_2));
+}
+
+bool client_tls_session::verify_certificate(bool preverified, boost::asio::ssl::verify_context& ctx)
+{
+  // The verify callback can be used to check whether the certificate that is
+  // being presented is valid for the peer. For example, RFC 2818 describes
+  // the steps involved in doing this for HTTPS. Consult the OpenSSL
+  // documentation for more details. Note that the callback is called once
+  // for each certificate in the certificate chain, starting from the root
+  // certificate authority.
+
+  // In this example we will simply print the certificate's subject name.
+  char subject_name[256];
+  X509* cert = X509_STORE_CTX_get_current_cert(ctx.native_handle());
+  X509_NAME_oneline(X509_get_subject_name(cert), subject_name, 256);
+  spdlog::debug("Verifying {}", subject_name);
+
+  return preverified;
+}
+
+void client_tls_session::handshake()
+{
+  socket_.async_handshake(boost::asio::ssl::stream_base::client,
+      [this, me = base::shared_from_this()](const boost::system::error_code& error)
+      {
+        if (!error)
+        {
+          me->request_file();
+        }
+        else
+        {
+          spdlog::error("Handshake failed: {}", error.message());
+        }
+      });
+}
+
+template<typename SocketType>
+SocketType& client_session_base<SocketType>::get_socket()
 {
   return socket_;
 }
@@ -43,7 +101,7 @@ void client_session::start_request()
   boost::asio::async_connect(
     socket_,
     endpoint,
-    [this, me = shared_from_this(), available]
+    [this, me = client_session_base<boost::asio::ip::tcp::socket>::shared_from_this(), available]
     (boost::system::error_code ec, boost::asio::ip::tcp::endpoint)
     {
       if(!ec)
@@ -59,7 +117,45 @@ void client_session::start_request()
     });
 }
 
-void client_session::request_file()
+void client_tls_session::start_request()
+{
+  auto available = deque_.try_pop();
+
+  if(!available.has_value())
+  {
+    return;
+  }
+
+  //not setting offset here, it will be set by file_handler when file is created
+  requested_.file_info = std::move(available.value().file_info);
+  requested_.chunksize = mfsync::protocol::CHUNKSIZE;
+
+  boost::asio::ip::tcp::resolver resolver{io_context_};
+  auto endpoint = resolver.resolve(available.value().source_address.to_string(),
+                                   std::to_string(available.value().source_port));
+
+  boost::asio::async_connect(
+    socket_.lowest_layer(),
+    endpoint,
+    [this, me = this->shared_from_this(), available]
+    (boost::system::error_code ec, boost::asio::ip::tcp::endpoint)
+    {
+      if(!ec)
+      {
+        std::dynamic_pointer_cast<client_tls_session>(me)->handshake();
+      }
+      else
+      {
+        spdlog::debug("Couldnt conntect. error: {}", ec.message());
+        spdlog::debug("Target host: {} {}", available.value().source_address.to_string(),
+                                            available.value().source_port);
+      }
+    });
+}
+
+
+template<typename SocketType>
+void client_session_base<SocketType>::request_file()
 {
   auto output_file_stream = file_handler_.create_file(requested_);
 
@@ -78,7 +174,7 @@ void client_session::request_file()
 
   async_write(socket_,
     boost::asio::buffer(message_.data(), message_.size()),
-    [me = shared_from_this()](boost::system::error_code const &ec, std::size_t) {
+    [me = this->shared_from_this()](boost::system::error_code const &ec, std::size_t) {
       if(!ec)
       {
         spdlog::debug("Done requesting file!");
@@ -91,19 +187,21 @@ void client_session::request_file()
     });
 }
 
-void client_session::read_file_request_response()
+template<typename SocketType>
+void client_session_base<SocketType>::read_file_request_response()
 {
   boost::asio::async_read_until(
     socket_,
     stream_buffer_,
     mfsync::protocol::MFSYNC_HEADER_END,
-    [me = shared_from_this()](boost::system::error_code const &error, std::size_t bytes_transferred)
+    [me = this->shared_from_this()](boost::system::error_code const &error, std::size_t bytes_transferred)
     {
       me->handle_read_file_request_response(error, bytes_transferred);
     });
 }
 
-void client_session::handle_read_file_request_response(boost::system::error_code const &error,
+template<typename SocketType>
+void client_session_base<SocketType>::handle_read_file_request_response(boost::system::error_code const &error,
                                                        std::size_t bytes_transferred)
 {
   if(!error)
@@ -131,7 +229,7 @@ void client_session::handle_read_file_request_response(boost::system::error_code
 
     async_write(socket_,
       boost::asio::buffer(message_.data(), message_.size()),
-      [me = shared_from_this()](boost::system::error_code const &ec, std::size_t) {
+      [me = this->shared_from_this()](boost::system::error_code const &ec, std::size_t) {
         if(!ec)
         {
           spdlog::debug("Done sending response");
@@ -150,7 +248,8 @@ void client_session::handle_read_file_request_response(boost::system::error_code
   }
 }
 
-void client_session::read_file_chunk()
+template<typename SocketType>
+void client_session_base<SocketType>::read_file_chunk()
 {
   readbuf_.resize(requested_.chunksize);
 
@@ -171,14 +270,15 @@ void client_session::read_file_chunk()
   boost::asio::async_read(
     socket_,
     buf,
-    [me = shared_from_this()](boost::system::error_code const &error, std::size_t bytes_transferred)
+    [me = this->shared_from_this()](boost::system::error_code const &error, std::size_t bytes_transferred)
     {
       me->handle_read_file_chunk(error, bytes_transferred);
     });
 }
 
 
-void client_session::handle_read_file_chunk(boost::system::error_code const &error,
+template<typename SocketType>
+void client_session_base<SocketType>::handle_read_file_chunk(boost::system::error_code const &error,
                                             std::size_t bytes_transferred)
 {
   if(error)
@@ -217,7 +317,8 @@ void client_session::handle_read_file_chunk(boost::system::error_code const &err
   start_request();
 }
 
-void client_session::handle_error()
+template<typename SocketType>
+void client_session_base<SocketType>::handle_error()
 {
   spdlog::error("handle_error not implemented yet!!!");
 }
