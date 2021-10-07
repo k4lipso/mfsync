@@ -14,6 +14,7 @@ public:
 
   void run();
   void stop();
+  void enable_tls(const std::string& dh_file, const std::string& cert_file, const std::string& key_file = "");
 
 private:
 
@@ -23,10 +24,9 @@ private:
 
   std::string get_password() const;
 
-  boost::asio::io_context &io_context_;
-  boost::asio::ssl::context ssl_context_;
-
+  std::optional<boost::asio::ssl::context> ssl_context_;
   boost::asio::ip::tcp::acceptor acceptor_;
+
   unsigned short port_;
   mfsync::file_handler& file_handler_;
 };

@@ -9,24 +9,13 @@
 namespace mfsync::filetransfer
 {
 server::server(boost::asio::io_context &io_context, unsigned short port, mfsync::file_handler& file_handler)
-  : io_context_(io_context)
-  , ssl_context_(boost::asio::ssl::context::sslv23)
-  , acceptor_(io_context_)
+  : acceptor_(io_context)
   , port_(port)
   , file_handler_(file_handler)
 {}
 
 void server::run()
 {
-  ssl_context_.set_options(
-    boost::asio::ssl::context::default_workarounds
-    | boost::asio::ssl::context::no_sslv2
-    | boost::asio::ssl::context::single_dh_use);
-  ssl_context_.set_password_callback(std::bind(&server::get_password, this));
-  ssl_context_.use_certificate_chain_file("server.pem");
-  ssl_context_.use_private_key_file("server.pem", boost::asio::ssl::context::pem);
-  ssl_context_.use_tmp_dh_file("dh2048.pem");
-
   start_listening(port_);
   accept_connections();
 }
@@ -40,6 +29,23 @@ void server::stop()
 {
   acceptor_.close();
   spdlog::debug("closed acceptor");
+}
+
+void server::enable_tls(const std::string& dh_file, const std::string& cert_file, const std::string& key_file)
+{
+
+  ssl_context_ = boost::asio::ssl::context{boost::asio::ssl::context::sslv23};
+
+  auto& ctx = ssl_context_.value();
+  ctx.set_options(
+    boost::asio::ssl::context::default_workarounds
+    | boost::asio::ssl::context::no_sslv2
+    | boost::asio::ssl::context::single_dh_use);
+
+  ctx.set_password_callback(std::bind(&server::get_password, this));
+  ctx.use_certificate_chain_file(cert_file);
+  ctx.use_private_key_file(key_file.empty() ? cert_file : key_file, boost::asio::ssl::context::pem);
+  ctx.use_tmp_dh_file(dh_file);
 }
 
 void server::start_listening(uint16_t port)
@@ -74,10 +80,17 @@ void server::handle_new_connection(boost::asio::ip::tcp::socket socket,
     return;
   }
 
-  auto handler = std::make_shared<mfsync::filetransfer::server_tls_session>(
-        boost::asio::ssl::stream<boost::asio::ip::tcp::socket>(std::move(socket), ssl_context_), file_handler_);
-
-  handler->start();
+  if(ssl_context_.has_value())
+  {
+    auto handler = std::make_shared<mfsync::filetransfer::server_tls_session>(
+      boost::asio::ssl::stream<boost::asio::ip::tcp::socket>(std::move(socket), ssl_context_.value()), file_handler_);
+    handler->start();
+  }
+  else
+  {
+    auto handler = std::make_shared<mfsync::filetransfer::server_session>(std::move(socket), file_handler_);
+    handler->start();
+  }
 
   acceptor_.async_accept([this](auto ec, auto socket) { handle_new_connection(std::move(socket), ec); });
 }
