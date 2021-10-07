@@ -62,7 +62,7 @@ public:
   using base = client_session_base<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>;
   client_tls_session() = delete;
   client_tls_session(boost::asio::io_context& context,
-                     boost::asio::ssl::stream<boost::asio::ip::tcp::socket> socket,
+                     boost::asio::ssl::context& ssl_context,
                      mfsync::concurrent::deque<available_file>& deque,
                      mfsync::file_handler& handler);
 

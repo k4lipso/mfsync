@@ -55,11 +55,14 @@ target_include_directories(mfsync
     ${OPENSSL_INCLUDE_DIR}
 )
 
+message("OpenSSL::Crypto: ${OPENSSL_LIBRARIES}")
+
 target_link_libraries(mfsync
   PRIVATE
     Boost::program_options
+    OpenSSL::SSL
+    OpenSSL::Crypto
     spdlog::spdlog
-    ${OPENSSL_LIBRARIES}
 )
 
 target_compile_options(mfsync

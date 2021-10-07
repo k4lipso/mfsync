@@ -103,9 +103,10 @@ namespace mfsync
 
       if(std::get<1>(it_bool_pair) && print_availables_)
       {
-        spdlog::info("available: \"{}\" - {} - {}", (*std::get<0>(it_bool_pair)).file_info.sha256sum,
-                                                    (*std::get<0>(it_bool_pair)).file_info.file_name,
-                                                    (*std::get<0>(it_bool_pair)).file_info.size);
+        const auto& file_info = (*std::get<0>(it_bool_pair)).file_info;
+        spdlog::info("{} - {} - {} bytes", file_info.sha256sum,
+                                           file_info.file_name,
+                                           file_info.size);
         changed = true;
       }
     }

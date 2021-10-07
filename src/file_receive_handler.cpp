@@ -10,7 +10,10 @@ file_receive_handler::file_receive_handler(boost::asio::io_context& context, mfs
   , timer_(context)
   , file_handler_(file_handler)
   , request_all_{true}
-{}
+  , ctx_(boost::asio::ssl::context::sslv23)
+{
+  ctx_.load_verify_file("ca.pem");
+}
 
 file_receive_handler::file_receive_handler(boost::asio::io_context& context, mfsync::file_handler& file_handler,
                      std::vector<std::string> files_to_request)
@@ -19,7 +22,10 @@ file_receive_handler::file_receive_handler(boost::asio::io_context& context, mfs
   , file_handler_(file_handler)
   , files_to_request_(std::move(files_to_request))
   , request_all_{false}
-{}
+  , ctx_(boost::asio::ssl::context::sslv23)
+{
+  ctx_.load_verify_file("ca.pem");
+}
 
 void file_receive_handler::set_files(std::vector<std::string> files_to_request)
 {
@@ -90,8 +96,8 @@ std::future<void> file_receive_handler::get_future()
 
 void file_receive_handler::start_new_session()
 {
-  auto session = std::make_shared<mfsync::filetransfer::client_session>(io_context_,
-                                                                        boost::asio::ip::tcp::socket{io_context_},
+  auto session = std::make_shared<mfsync::filetransfer::client_tls_session>(io_context_,
+                                                                        ctx_,
                                                                         request_queue_,
                                                                         file_handler_);
   session_ = session;

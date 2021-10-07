@@ -4,6 +4,7 @@
 #include <memory>
 
 #include <boost/asio.hpp>
+#include <boost/asio/ssl.hpp>
 
 #include "spdlog/spdlog.h"
 
@@ -41,10 +42,12 @@ private:
   mfsync::file_handler& file_handler_;
   std::vector<std::string> files_to_request_;
   mfsync::concurrent::deque<available_file> request_queue_;
+  boost::asio::ssl::context ctx_;
   bool request_all_;
-  std::weak_ptr<mfsync::filetransfer::client_session> session_;
+  std::weak_ptr<mfsync::filetransfer::client_tls_session> session_;
   std::promise<void> promise_;
   mutable std::mutex mutex_;
+
 };
 
 } //closing namespace mfsync

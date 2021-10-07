@@ -26,13 +26,13 @@ client_session::client_session(boost::asio::io_context& context,
 {}
 
 client_tls_session::client_tls_session(boost::asio::io_context& context,
-                                       boost::asio::ssl::stream<boost::asio::ip::tcp::socket> socket,
+                                       boost::asio::ssl::context& ssl_context,
                                        mfsync::concurrent::deque<available_file>& deque,
                                        mfsync::file_handler& handler)
   : client_session_base<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>(context,
-                                                                                std::move(socket),
-                                                                                deque,
-                                                                                handler)
+        boost::asio::ssl::stream<boost::asio::ip::tcp::socket>(context, ssl_context),
+        deque,
+        handler)
 {
   socket_.set_verify_mode(boost::asio::ssl::verify_peer);
   socket_.set_verify_callback(std::bind(&client_tls_session::verify_certificate,
@@ -61,6 +61,10 @@ bool client_tls_session::verify_certificate(bool preverified, boost::asio::ssl::
 
 void client_tls_session::handshake()
 {
+  //todo: async_handshake waits forever. if the server doesnt support tls the handshake will never finish
+  //eventually cancel it like in
+  //https://stackoverflow.com/questions/40026440/boost-asio-async-handshake-cannot-be-canceled
+  spdlog::debug("Starting handshake");
   socket_.async_handshake(boost::asio::ssl::stream_base::client,
       [this, me = base::shared_from_this()](const boost::system::error_code& error)
       {
@@ -314,7 +318,9 @@ void client_session_base<SocketType>::handle_read_file_chunk(boost::system::erro
                                               requested_.file_info.size);
 
   readbuf_.clear();
-  start_request();
+  //TODO: start_request currently does handshake again which leads to failing tls connection foo
+  //so it is neccessary only do the deque handling setting "requested_" properly and not doing handshake anymore
+  //start_request();
 }
 
 template<typename SocketType>
