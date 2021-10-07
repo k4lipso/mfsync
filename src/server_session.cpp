@@ -8,31 +8,59 @@
 namespace mfsync::filetransfer
 {
 
-server_session::server_session(boost::asio::io_context& context,
-                               mfsync::file_handler& handler)
-  : io_context_(context)
-  , socket_(context)
+template<typename SocketType>
+server_session_base<SocketType>::server_session_base(SocketType socket,
+                                                     mfsync::file_handler& handler)
+  : socket_(std::move(socket))
   , file_handler_(handler)
 {}
 
-boost::asio::ip::tcp::socket& server_session::get_socket()
+template<typename SocketType>
+SocketType& server_session_base<SocketType>::get_socket()
 {
   return socket_;
 }
 
-void server_session::read()
+server_tls_session::server_tls_session(boost::asio::ssl::stream<boost::asio::ip::tcp::socket> socket, mfsync::file_handler& handler)
+  : server_session_base<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>(std::move(socket), handler)
+{}
+
+void server_tls_session::start()
+{
+  do_handshake();
+}
+
+void server_tls_session::do_handshake()
+{
+  socket_.async_handshake(boost::asio::ssl::stream_base::server,
+                          [this, me = shared_from_this()](const boost::system::error_code& error)
+                          {
+                            if(!error)
+                            {
+                              me->read();
+                            }
+                            else
+                            {
+                              spdlog::error("server_tls_session error on handshake: {}", error.message());
+                            }
+                          });
+}
+
+template<typename SocketType>
+void server_session_base<SocketType>::read()
 {
   boost::asio::async_read_until(
     socket_,
     stream_buffer_,
     mfsync::protocol::MFSYNC_HEADER_END,
-    [me = shared_from_this()](boost::system::error_code const &error, std::size_t bytes_transferred)
+    [me = this->shared_from_this()](boost::system::error_code const &error, std::size_t bytes_transferred)
     {
       me->handle_read_header(error, bytes_transferred);
     });
 }
 
-void server_session::handle_read_header(boost::system::error_code const &error, std::size_t bytes_transferred)
+template<typename SocketType>
+void server_session_base<SocketType>::handle_read_header(boost::system::error_code const &error, std::size_t bytes_transferred)
 {
   if(error)
   {
@@ -63,13 +91,14 @@ void server_session::handle_read_header(boost::system::error_code const &error, 
   }
 }
 
-void server_session::send_confirmation()
+template<typename SocketType>
+void server_session_base<SocketType>::send_confirmation()
 {
   message_ = protocol::create_begin_transmission_message();
   spdlog::debug("Sending response: {}", message_);
   async_write(socket_,
     boost::asio::buffer(message_.data(), message_.size()),
-    [me = shared_from_this()](boost::system::error_code const &ec, std::size_t) {
+    [me = this->shared_from_this()](boost::system::error_code const &ec, std::size_t) {
       if(!ec)
       {
         spdlog::debug("Done sending response");
@@ -82,13 +111,14 @@ void server_session::send_confirmation()
     });
 }
 
-void server_session::reply_with_error(const std::string& reason)
+template<typename SocketType>
+void server_session_base<SocketType>::reply_with_error(const std::string& reason)
 {
   message_ = protocol::create_error_message(reason);
   spdlog::debug("Sending response: {}", message_);
   async_write(socket_,
     boost::asio::buffer(message_.data(), message_.size()),
-    [me = shared_from_this()](boost::system::error_code const &ec, std::size_t) {
+    [me = this->shared_from_this()](boost::system::error_code const &ec, std::size_t) {
       if(!ec)
       {
         spdlog::debug("Done sending response");
@@ -100,19 +130,21 @@ void server_session::reply_with_error(const std::string& reason)
     });
 }
 
-void server_session::read_confirmation()
+template<typename SocketType>
+void server_session_base<SocketType>::read_confirmation()
 {
   boost::asio::async_read_until(
     socket_,
     stream_buffer_,
     mfsync::protocol::MFSYNC_HEADER_END,
-    [me = shared_from_this()](boost::system::error_code const &error, std::size_t bytes_transferred)
+    [me = this->shared_from_this()](boost::system::error_code const &error, std::size_t bytes_transferred)
     {
       me->handle_read_confirmation(error, bytes_transferred);
     });
 }
 
-void server_session::handle_read_confirmation(boost::system::error_code const &error, std::size_t bytes_transferred)
+template<typename SocketType>
+void server_session_base<SocketType>::handle_read_confirmation(boost::system::error_code const &error, std::size_t bytes_transferred)
 {
   if(error)
   {
@@ -152,7 +184,8 @@ void server_session::handle_read_confirmation(boost::system::error_code const &e
   write_file();
 }
 
-void server_session::write_file()
+template<typename SocketType>
+void server_session_base<SocketType>::write_file()
 {
   if(!ifstream_)
   {
@@ -171,7 +204,7 @@ void server_session::write_file()
 
   async_write(socket_,
     boost::asio::buffer(writebuf_.data(), writebuf_.size()),
-    [me = shared_from_this()](boost::system::error_code const &ec, std::size_t) {
+    [me = this->shared_from_this()](boost::system::error_code const &ec, std::size_t) {
       if(!ec)
       {
         me->write_file();

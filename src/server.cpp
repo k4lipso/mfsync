@@ -10,6 +10,7 @@ namespace mfsync::filetransfer
 {
 server::server(boost::asio::io_context &io_context, unsigned short port, mfsync::file_handler& file_handler)
   : io_context_(io_context)
+  , ssl_context_(boost::asio::ssl::context::sslv23)
   , acceptor_(io_context_)
   , port_(port)
   , file_handler_(file_handler)
@@ -17,8 +18,22 @@ server::server(boost::asio::io_context &io_context, unsigned short port, mfsync:
 
 void server::run()
 {
+  ssl_context_.set_options(
+    boost::asio::ssl::context::default_workarounds
+    | boost::asio::ssl::context::no_sslv2
+    | boost::asio::ssl::context::single_dh_use);
+  ssl_context_.set_password_callback(std::bind(&server::get_password, this));
+  ssl_context_.use_certificate_chain_file("server.pem");
+  ssl_context_.use_private_key_file("server.pem", boost::asio::ssl::context::pem);
+  ssl_context_.use_tmp_dh_file("dh2048.pem");
+
   start_listening(port_);
   accept_connections();
+}
+
+std::string server::get_password() const
+{
+  return "test";
 }
 
 void server::stop()
@@ -41,12 +56,10 @@ void server::start_listening(uint16_t port)
 
 void server::accept_connections()
 {
-  auto handler = std::make_shared<mfsync::filetransfer::server_session>(io_context_, file_handler_);
-  acceptor_.async_accept(handler->get_socket(),
-                         [this, handler](auto ec) { handle_new_connection(handler, ec); });
+  acceptor_.async_accept([this](auto ec, auto socket) { handle_new_connection(std::move(socket), ec); });
 }
 
-void server::handle_new_connection(std::shared_ptr<mfsync::filetransfer::server_session> handler,
+void server::handle_new_connection(boost::asio::ip::tcp::socket socket,
                                    const boost::system::error_code &ec)
 {
   if(ec)
@@ -61,12 +74,12 @@ void server::handle_new_connection(std::shared_ptr<mfsync::filetransfer::server_
     return;
   }
 
-  handler->read();
+  auto handler = std::make_shared<mfsync::filetransfer::server_tls_session>(
+        boost::asio::ssl::stream<boost::asio::ip::tcp::socket>(std::move(socket), ssl_context_), file_handler_);
 
-  auto new_handler = std::make_shared<mfsync::filetransfer::server_session>(io_context_, file_handler_);
+  handler->start();
 
-  acceptor_.async_accept(new_handler->get_socket(),
-                         [this, new_handler](auto ec) { handle_new_connection(new_handler, ec); });
+  acceptor_.async_accept([this](auto ec, auto socket) { handle_new_connection(std::move(socket), ec); });
 }
 
 } //closing namespace mfsync::filetransfer
