@@ -39,6 +39,16 @@ protected:
   std::ifstream ifstream_;
 };
 
+class server_session : public server_session_base<boost::asio::ip::tcp::socket>
+{
+public:
+  server_session() = delete;
+  server_session(boost::asio::ip::tcp::socket socket, mfsync::file_handler& handler);
+  virtual ~server_session() = default;
+
+  virtual void start() override;
+};
+
 class server_tls_session : public server_session_base<SSLSocket>
 {
 public:

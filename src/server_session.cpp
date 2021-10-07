@@ -21,9 +21,19 @@ SocketType& server_session_base<SocketType>::get_socket()
   return socket_;
 }
 
+server_session::server_session(boost::asio::ip::tcp::socket socket, mfsync::file_handler& handler)
+  : server_session_base<boost::asio::ip::tcp::socket>(std::move(socket), handler)
+{}
+
 server_tls_session::server_tls_session(boost::asio::ssl::stream<boost::asio::ip::tcp::socket> socket, mfsync::file_handler& handler)
   : server_session_base<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>(std::move(socket), handler)
 {}
+
+void server_session::start()
+{
+  read();
+}
+
 
 void server_tls_session::start()
 {
