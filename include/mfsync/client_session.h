@@ -9,8 +9,14 @@
 namespace mfsync::filetransfer
 {
 
+class session_base
+{
+public:
+  virtual ~session_base() = default;
+};
+
 template<typename SocketType>
-class client_session_base : public std::enable_shared_from_this<client_session_base<SocketType>>
+class client_session_base : public session_base, public std::enable_shared_from_this<client_session_base<SocketType>>
 {
 public:
   client_session_base() = delete;
@@ -18,6 +24,7 @@ public:
                       SocketType socket,
                       mfsync::concurrent::deque<available_file>& deque,
                       mfsync::file_handler& handler);
+  virtual ~client_session_base() = default;
 
   SocketType& get_socket();
   virtual void start_request() = 0;
@@ -43,20 +50,18 @@ protected:
 };
 
 class client_session : public client_session_base<boost::asio::ip::tcp::socket>
-                       //public std::enable_shared_from_this<client_session>
 {
 public:
   client_session() = delete;
   client_session(boost::asio::io_context& context,
-                 boost::asio::ip::tcp::socket socket,
                  mfsync::concurrent::deque<available_file>& deque,
                  mfsync::file_handler& handler);
+  virtual ~client_session() = default;
 
   virtual void start_request() override;
 };
 
 class client_tls_session : public client_session_base<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>
-                           //public std::enable_shared_from_this<client_tls_session>
 {
 public:
   using base = client_session_base<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>;
@@ -65,6 +70,7 @@ public:
                      boost::asio::ssl::context& ssl_context,
                      mfsync::concurrent::deque<available_file>& deque,
                      mfsync::file_handler& handler);
+  virtual ~client_tls_session() = default;
 
   virtual void start_request() override;
   bool verify_certificate(bool preverified, boost::asio::ssl::verify_context& ctx);

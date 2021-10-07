@@ -30,6 +30,8 @@ public:
   void get_files();
   std::future<void> get_future();
 
+  void enable_tls(const std::string& cert_file);
+
 private:
 
   void start_new_session();
@@ -42,9 +44,9 @@ private:
   mfsync::file_handler& file_handler_;
   std::vector<std::string> files_to_request_;
   mfsync::concurrent::deque<available_file> request_queue_;
-  boost::asio::ssl::context ctx_;
+  std::optional<boost::asio::ssl::context> ctx_;
   bool request_all_;
-  std::weak_ptr<mfsync::filetransfer::client_tls_session> session_;
+  std::weak_ptr<mfsync::filetransfer::session_base> session_;
   std::promise<void> promise_;
   mutable std::mutex mutex_;
 

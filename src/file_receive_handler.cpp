@@ -10,9 +10,7 @@ file_receive_handler::file_receive_handler(boost::asio::io_context& context, mfs
   , timer_(context)
   , file_handler_(file_handler)
   , request_all_{true}
-  , ctx_(boost::asio::ssl::context::sslv23)
 {
-  ctx_.load_verify_file("ca.pem");
 }
 
 file_receive_handler::file_receive_handler(boost::asio::io_context& context, mfsync::file_handler& file_handler,
@@ -22,9 +20,7 @@ file_receive_handler::file_receive_handler(boost::asio::io_context& context, mfs
   , file_handler_(file_handler)
   , files_to_request_(std::move(files_to_request))
   , request_all_{false}
-  , ctx_(boost::asio::ssl::context::sslv23)
 {
-  ctx_.load_verify_file("ca.pem");
 }
 
 void file_receive_handler::set_files(std::vector<std::string> files_to_request)
@@ -94,15 +90,32 @@ std::future<void> file_receive_handler::get_future()
   return promise_.get_future();
 }
 
+void file_receive_handler::enable_tls(const std::string& cert_file)
+{
+  ctx_ = boost::asio::ssl::context{boost::asio::ssl::context::sslv23};
+  ctx_.value().load_verify_file(cert_file);
+}
+
 void file_receive_handler::start_new_session()
 {
-  auto session = std::make_shared<mfsync::filetransfer::client_tls_session>(io_context_,
-                                                                        ctx_,
-                                                                        request_queue_,
-                                                                        file_handler_);
-  session_ = session;
+  if(ctx_.has_value())
+  {
+    auto session = std::make_shared<mfsync::filetransfer::client_tls_session>(io_context_,
+                                                                              ctx_.value(),
+                                                                              request_queue_,
+                                                                              file_handler_);
+    session_ = std::dynamic_pointer_cast<mfsync::filetransfer::session_base>(session);
+    session->start_request();
+  }
+  else
+  {
+    auto session = std::make_shared<mfsync::filetransfer::client_session>(io_context_,
+                                                                          request_queue_,
+                                                                          file_handler_);
+    session_ = std::dynamic_pointer_cast<mfsync::filetransfer::session_base>(session);
+    session->start_request();
 
-  session->start_request();
+  }
 }
 
 void file_receive_handler::add_to_request_queue(available_file file)

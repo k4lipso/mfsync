@@ -19,10 +19,9 @@ client_session_base<SocketType>::client_session_base(boost::asio::io_context& co
 {}
 
 client_session::client_session(boost::asio::io_context& context,
-                               boost::asio::ip::tcp::socket socket,
                                mfsync::concurrent::deque<available_file>& deque,
                                mfsync::file_handler& handler)
-  : client_session_base<boost::asio::ip::tcp::socket>(context, std::move(socket), deque, handler)
+  : client_session_base<boost::asio::ip::tcp::socket>(context, boost::asio::ip::tcp::socket{context}, deque, handler)
 {}
 
 client_tls_session::client_tls_session(boost::asio::io_context& context,
