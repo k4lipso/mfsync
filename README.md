@@ -43,6 +43,34 @@ mfsync sync 239.255.0.1 ./destination
 ```
   * share and get all available files
 
+## TLS Support:
+experimental tls support was added to mfsync. clients (receiving files) need a file containing the certificates of all trusted servers (sending files), while servers need a file containing its private key and certificate and file containing diffie hellman parameters.
+
+The necessary keys and certificates could be generated with the following openssl commands:
+```
+openssl req -newkey rsa:2048 -new -nodes -x509 -days 3650 -keyout server.pem -out server.pem
+openssl dhparam -out dhparams.pem 2048
+```
+
+'mfsync share' could then be operated as follows:
+```
+mfsync share 239.255.0.1 --server-tls ./server.pem ./dhparams.pem -- ./destination
+```
+
+A client would need a file containg the servers certificates and then could retreive files using
+```
+mfsync get 239.255.0.1 --client-tls ./ca.pem ./destination
+```
+If you want to use 'mfsync sync' both flags, --client-tls and --server-tls, are needed to function properly.
+
+The table below shows which flags are neccessary for which mode:
+
+|                 | share           | fetch           | get             | sync            |
+| --------------- | --------------- | --------------- | --------------- | --------------- |
+| --client-tls    |                 |                 | X               | X               |
+| --server-tls    | X               |                 |                 | X               |
+
+
 ## Build:
 mfsync depends on: spdlog, openssl, boost, cmake
 
@@ -75,8 +103,6 @@ The table below shows which modes listen for tcp or udp packages depending on th
 An X means that the according port has to be openend by the firewall.
 
 ##### Todos:
-* allow secure file transfer using tls (this requires certificate generation on each host)
-* add --timeout to end execution after given period
-  * also finish 'mfsync get' if --request was specified and all specified files are downloaded
-* eventually switch from self made network protocol to something json like
+* prettify output
+* reuse connection if host still has other files to offer
 * many more that iam not aware of right now
