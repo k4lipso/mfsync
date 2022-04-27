@@ -71,6 +71,9 @@ int main(int argc, char **argv)
     ("port,p", po::value<unsigned short>(), "Manual specify tcp port to listen on. If not specified using default port 8000")
     ("multicast-port,m", po::value<unsigned short>(), "Manual specify multicast port. If not specified using default port 30001")
     ("multicast-listen-address,l", po::value<std::string>(), "Manual specify multicast listen address. If not specified using 0.0.0.0")
+    ("server-tls,e", po::value<std::vector<std::string>>()->multitoken(),
+       "paths to two files. first containing certificate and private key of the server. second containing dh parameters")
+    ("client-tls,e", po::value<std::string>(), "paths to file containing all trusted certificates")
     ("wait-until,w", po::value<int>(), "stop program execution after the given amount of seconds.")
     ("outbound-addresses,a", po::value<std::vector<std::string>>()->multitoken(), "Manual specify multicast outbound interface addresses.")
     ("outbound-interfaces,i", po::value<std::vector<std::string>>()->multitoken(),
@@ -116,6 +119,7 @@ int main(int argc, char **argv)
     print_help();
     return 0;
   }
+
 
   const auto mode = misc::get_mode(vm["mode"].as<std::string>());
   //todo: check if multicast addr is valid
@@ -240,6 +244,25 @@ int main(int argc, char **argv)
     destination_path = vm["destination"].as<std::string>();
   }
 
+  std::string client_tls_path;
+  std::optional<std::pair<std::string, std::string>> server_tls_paths;
+
+  if(vm.count("client-tls"))
+  {
+    client_tls_path = vm["client-tls"].as<std::string>();
+  }
+
+  if(vm.count("server-tls"))
+  {
+    const auto& file_paths = vm["server-tls"].as<std::vector<std::string>>();
+
+    if(file_paths.size() != 2)
+    {
+      spdlog::info("wrong amount of server-tls files specified. exactly two files need to be specified.");
+    }
+
+    server_tls_paths = std::make_pair(file_paths.at(0), file_paths.at(1));
+  }
 
   boost::asio::io_context io_service;
   std::unique_ptr<mfsync::multicast::file_fetcher> fetcher = nullptr;
@@ -289,6 +312,13 @@ int main(int argc, char **argv)
     file_server = std::make_unique<mfsync::filetransfer::server>(io_service,
                                                                  port,
                                                                  file_handler);
+
+    if(server_tls_paths.has_value())
+    {
+      const auto& paths = server_tls_paths.value();
+      file_server->enable_tls(std::get<1>(paths), std::get<0>(paths));
+    }
+
     file_server->run();
   }
 
@@ -315,6 +345,11 @@ int main(int argc, char **argv)
     if(!file_hashes.empty())
     {
       receiver->set_files(std::move(file_hashes));
+    }
+
+    if(!client_tls_path.empty())
+    {
+      receiver->enable_tls(client_tls_path);
     }
 
     receiver->get_files();
