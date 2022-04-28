@@ -69,6 +69,7 @@ int main(int argc, char **argv)
     ("request,r", po::value<std::vector<std::string>>()->multitoken()->zero_tokens(),
        "try download the files with the given hash. if no hash is give all available files are downloaded")
     ("port,p", po::value<unsigned short>(), "Manual specify tcp port to listen on. If not specified using default port 8000")
+    ("multicast-address", po::value<std::string>(), "Manual specify multicast address. If not specified 239.255.0.1 is used as default")
     ("multicast-port,m", po::value<unsigned short>(), "Manual specify multicast port. If not specified using default port 30001")
     ("multicast-listen-address,l", po::value<std::string>(), "Manual specify multicast listen address. If not specified using 0.0.0.0")
     ("server-tls,e", po::value<std::vector<std::string>>()->multitoken(),
@@ -82,7 +83,6 @@ int main(int argc, char **argv)
   po::options_description hidden;
   hidden.add_options()
       ("mode", po::value<std::string>(), "operation mode")
-      ("multicast-address", po::value<std::string>(), "multicast address to listen on")
       ("destination", po::value<std::string>(), "path to destination")
       ;
 
@@ -92,7 +92,6 @@ int main(int argc, char **argv)
 
   po::positional_options_description p;
   p.add("mode", 1);
-  p.add("multicast-address", 1);
   p.add("destination", 1);
 
   po::variables_map vm;
@@ -114,7 +113,7 @@ int main(int argc, char **argv)
     return 0;
   }
 
-  if(!vm.count("mode") || !vm.count("multicast-address"))
+  if(!vm.count("mode"))
   {
     print_help();
     return 0;
@@ -122,7 +121,6 @@ int main(int argc, char **argv)
 
 
   const auto mode = misc::get_mode(vm["mode"].as<std::string>());
-  //todo: check if multicast addr is valid
 
   if(vm.count("trace"))
   {
@@ -153,8 +151,9 @@ int main(int argc, char **argv)
 
   unsigned short port = mfsync::protocol::TCP_PORT;
   unsigned short multicast_port = mfsync::protocol::MULTICAST_PORT;
-  boost::asio::ip::address multicast_listen_address =
+  auto multicast_listen_address =
       boost::asio::ip::make_address(mfsync::protocol::MULTICAST_LISTEN_ADDRESS);
+
   std::vector<boost::asio::ip::address> outbound_addresses { boost::asio::ip::address{} };
 
   if(vm.count("port"))
@@ -230,7 +229,12 @@ int main(int argc, char **argv)
     }
   }
 
-  const auto multicast_address = boost::asio::ip::make_address(vm["multicast-address"].as<std::string>(), ec);
+  auto multicast_address = boost::asio::ip::make_address(mfsync::protocol::MULTICAST_ADDRESS);
+
+  if(vm.count("multicast-address"))
+  {
+    multicast_address = boost::asio::ip::make_address(vm["multicast-address"].as<std::string>(), ec);
+  }
 
   if(ec || !multicast_address.is_multicast())
   {

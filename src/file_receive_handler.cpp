@@ -134,7 +134,7 @@ void file_receive_handler::add_to_request_queue(available_file file)
 
 void file_receive_handler::wait()
 {
-  timer_.expires_from_now(boost::posix_time::seconds(1));
+  timer_.expires_from_now(boost::posix_time::milliseconds(10));
   timer_.async_wait(
       boost::bind(&file_receive_handler::handle_timeout, this,
         boost::asio::placeholders::error));
