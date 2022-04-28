@@ -15,7 +15,7 @@ The motivation to write this tool is to have an easy way to backup files on mult
 'mfsync share' basically enables every other computer in the network to download files from the sharing host.
 The sharing host announces all given files to the multicast group. Those files can then be downloaded from the host using mfsync on another machine.
 ```
-mfsync share 239.255.0.1 ./destination
+mfsync share ./destination
 ```
   * shares all available files but does not download new ones
 
@@ -23,7 +23,7 @@ mfsync share 239.255.0.1 ./destination
 'mfsync fetch' "passively" listens to all announced files in the multicast group and prints them to stdout. 
 This mode is used to get a list of all files that are currently made available within the multicast group.
 ```
-mfsync fetch 239.255.0.1
+mfsync fetch
 ```
   * requests names of all available files in the network and prints them to stdout
 
@@ -31,7 +31,7 @@ mfsync fetch 239.255.0.1
 'mfsync get' retreives all specified files. The files are specified by their sha256sum which can be seen when using 'mfsync fetch'. If no files are specified all announced files will be retreived.
 
 ```
-mfsync get 239.255.0.1 --request sha256sum1 sha256sum2 -- ./destination
+mfsync get --request sha256sum1 sha256sum2 -- ./destination
 ```
   * downloads files with the given sha256sums to given destination if available
   * if no --request flag is set, all files are downloaded
@@ -39,7 +39,7 @@ mfsync get 239.255.0.1 --request sha256sum1 sha256sum2 -- ./destination
 ### mfsync sync
 'mfsync sync' is basically a combination of 'mfsync share' and 'mfsync get'. It announces all given files and also retreives all available files that are not stored locally already. Files that where retrieved are then also shared again.
 ```
-mfsync sync 239.255.0.1 ./destination
+mfsync sync ./destination
 ```
   * share and get all available files
 
@@ -54,12 +54,12 @@ openssl dhparam -out dhparams.pem 2048
 
 'mfsync share' could then be operated as follows:
 ```
-mfsync share 239.255.0.1 --server-tls ./server.pem ./dhparams.pem -- ./destination
+mfsync share --server-tls ./server.pem ./dhparams.pem -- ./destination
 ```
 
 A client would need a file containg the servers certificates and then could retreive files using
 ```
-mfsync get 239.255.0.1 --client-tls ./ca.pem ./destination
+mfsync get --client-tls ./ca.pem ./destination
 ```
 If you want to use 'mfsync sync' both flags, --client-tls and --server-tls, are needed to function properly.
 
