@@ -8,7 +8,8 @@
 namespace mfsync
 {
 
-std::optional<file_information> file_information::create_file_information(const std::filesystem::path& path)
+std::optional<file_information> file_information::create_file_information(const std::filesystem::path& path,
+                                                                          const std::filesystem::path& base)
 {
   if(!std::filesystem::is_regular_file(path))
   {
@@ -31,7 +32,7 @@ std::optional<file_information> file_information::create_file_information(const 
   }
 
   file_information result;
-  result.file_name = path.filename();
+  result.file_name = std::filesystem::relative(path, base).string();
   result.sha256sum = sha256sum.value();
   result.size = std::filesystem::file_size(path);
 

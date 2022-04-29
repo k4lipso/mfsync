@@ -10,7 +10,8 @@ namespace mfsync
   {
     file_information() =default;
 
-    static std::optional<file_information> create_file_information(const std::filesystem::path& path);
+    static std::optional<file_information> create_file_information(const std::filesystem::path& path,
+                                                                   const std::filesystem::path& base);
     static std::optional<std::string> get_sha256sum(const std::filesystem::path& path);
 
     bool operator==(const file_information& rhs) const

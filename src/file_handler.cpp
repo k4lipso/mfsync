@@ -162,6 +162,17 @@ namespace mfsync
       spdlog::debug("setting offset to: {}", requested.offset);
     }
 
+    auto tmp_path_without_filename = tmp_path;
+    tmp_path_without_filename.remove_filename();
+    if(!std::filesystem::exists(tmp_path_without_filename))
+    {
+      if(!std::filesystem::create_directories(tmp_path_without_filename))
+      {
+        spdlog::error("Could not create directory {}", tmp_path_without_filename.string());
+        return std::nullopt;
+      }
+    }
+
     ofstream_wrapper output(requested);
 
     if(file_exists)
@@ -293,8 +304,20 @@ namespace mfsync
     std::erase_if(stored_files_, [this](const auto& file_info)
       { return !std::filesystem::exists(get_path_to_stored_file(file_info));});
 
-    for(const auto &entry : std::filesystem::directory_iterator(storage_path_))
+    update_stored_files(storage_path_);
+    return true;
+  }
+
+  void file_handler::update_stored_files(const std::filesystem::path& path)
+  {
+    for(const auto &entry : std::filesystem::directory_iterator(path))
     {
+      if(std::filesystem::is_directory(entry))
+      {
+        update_stored_files(entry);
+        continue;
+      }
+
       const std::string name = entry.path().filename().string();
 
       if(name.ends_with(TMP_SUFFIX))
@@ -309,7 +332,7 @@ namespace mfsync
         continue;
       }
 
-      auto file_info = file_information::create_file_information(entry.path());
+      auto file_info = file_information::create_file_information(entry.path(), storage_path_);
 
       if(!file_info.has_value())
       {
@@ -319,8 +342,6 @@ namespace mfsync
 
       add_stored_file(std::move(file_info.value()));
     }
-
-    return true;
   }
 
   void file_handler::update_available_files()
