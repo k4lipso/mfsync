@@ -318,7 +318,7 @@ namespace mfsync
         continue;
       }
 
-      const std::string name = entry.path().filename().string();
+      const std::string name = std::filesystem::relative(entry.path(), storage_path_).string();
 
       if(name.ends_with(TMP_SUFFIX))
       {
