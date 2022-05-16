@@ -2,6 +2,7 @@
 #include <boost/asio/ssl.hpp>
 
 #include "mfsync/file_handler.h"
+#include "mfsync/client_session.h"
 
 namespace mfsync::filetransfer
 {
@@ -21,6 +22,12 @@ public:
   virtual void start() = 0;
   void read();
 
+  void set_progress(progress_handler* progress)
+  {
+    progress_ = progress;
+  }
+
+
 protected:
 
   void handle_read_header(boost::system::error_code const &error, std::size_t bytes_transferred);
@@ -37,6 +44,9 @@ protected:
   boost::asio::streambuf stream_buffer_;
   std::vector<char> writebuf_;
   std::ifstream ifstream_;
+  progress_handler* progress_;
+  int percentage_ = 0;
+  std::optional<std::size_t> progress_index_ = std::nullopt;
 };
 
 class server_session : public server_session_base<boost::asio::ip::tcp::socket>

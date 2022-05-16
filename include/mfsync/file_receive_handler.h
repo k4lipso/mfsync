@@ -16,13 +16,14 @@
 namespace mfsync
 {
 
-
 class file_receive_handler
 {
 public:
-  file_receive_handler(boost::asio::io_context& context, mfsync::file_handler& file_handler);
+  file_receive_handler(boost::asio::io_context& context, mfsync::file_handler& file_handler,
+                       mfsync::filetransfer::progress_handler* progress);
 
   file_receive_handler(boost::asio::io_context& context, mfsync::file_handler& file_handler,
+                       mfsync::filetransfer::progress_handler* progress,
                        std::vector<std::string> files_to_request);
 
   void set_files(std::vector<std::string> files_to_request);
@@ -46,9 +47,10 @@ private:
   mfsync::concurrent::deque<available_file> request_queue_;
   std::optional<boost::asio::ssl::context> ctx_;
   bool request_all_;
-  std::weak_ptr<mfsync::filetransfer::session_base> session_;
+  std::vector<std::weak_ptr<mfsync::filetransfer::session_base>> sessions_;
   std::promise<void> promise_;
   mutable std::mutex mutex_;
+  mfsync::filetransfer::progress_handler* progress_;
 
 };
 

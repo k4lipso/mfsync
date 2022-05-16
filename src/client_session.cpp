@@ -165,6 +165,8 @@ void client_session_base<SocketType>::request_file()
   if(!output_file_stream.has_value())
   {
     spdlog::debug("file creation failed. abort session");
+    spdlog::debug("filename: {}, sha256sum: {}",
+                  requested_.file_info.file_name, requested_.file_info.sha256sum);
     handle_error();
     return;
   }
@@ -236,6 +238,17 @@ void client_session_base<SocketType>::handle_read_file_request_response(boost::s
         if(!ec)
         {
           spdlog::debug("Done sending response");
+
+          if(!me->progress_index_.has_value())
+          {
+            auto hash_name = me->requested_.file_info.sha256sum;
+            hash_name.resize(8);
+            std::string msg = hash_name + std::string{": Downloading "};
+            me->progress_index_ = me->progress_->create_bar(msg);
+            spdlog::debug("Index Value {}", me->progress_index_.value());
+            //me->bar_ = me->progress_->get(me->progress_index_.value());
+          }
+
           me->read_file_chunk();
         }
         else
@@ -294,11 +307,27 @@ void client_session_base<SocketType>::handle_read_file_chunk(boost::system::erro
   ofstream_.write(reinterpret_cast<char*>(readbuf_.data()), bytes_transferred, bytes_written_to_requested_);
   bytes_written_to_requested_ += bytes_transferred;
 
+  const int percentage = (static_cast<double>(bytes_written_to_requested_) / requested_.file_info.size) * 100;
+
+  if(percentage != percentage_)
+  {
+    percentage_ = percentage;
+  }
+
+  progress_->set_progress(progress_index_.value(), percentage_);
+
   if(ofstream_.tellp() < static_cast<std::streamsize>(requested_.file_info.size))
   {
     read_file_chunk();
     return;
   }
+
+  auto hash_name = requested_.file_info.sha256sum;
+  hash_name.resize(8);
+  std::string new_msg2 = hash_name + std::string{": Comparing Sha256sum... "};
+  progress_->set_option(progress_index_.value(), indicators::option::PrefixText(new_msg2));
+  progress_->set_option(progress_index_.value(), indicators::option::ForegroundColor(indicators::Color::blue));
+  progress_->set_progress(progress_index_.value(), 100);
 
   spdlog::debug("received file {}", requested_.file_info.file_name);
   spdlog::debug("with size in mb: {}", static_cast<double>(requested_.file_info.size / 1048576.0));
@@ -312,9 +341,14 @@ void client_session_base<SocketType>::handle_read_file_chunk(boost::system::erro
     return;
   }
 
-  spdlog::info("received file: {} - {} - {}", requested_.file_info.file_name,
-                                              requested_.file_info.sha256sum,
-                                              requested_.file_info.size);
+  std::string new_msg = hash_name + std::string{": Complete "};
+  progress_->set_option(progress_index_.value(), indicators::option::ForegroundColor(indicators::Color::green));
+  progress_->set_option(progress_index_.value(), indicators::option::PrefixText(new_msg));
+  progress_index_ = std::nullopt;
+
+  //spdlog::info("received file: {} - {} - {}", requested_.file_info.file_name,
+  //                                            requested_.file_info.sha256sum,
+  //                                            requested_.file_info.size);
 
   readbuf_.clear();
   //TODO: start_request currently does handshake again which leads to failing tls connection foo

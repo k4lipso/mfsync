@@ -138,6 +138,16 @@ namespace mfsync
     return cv_new_available_file_;
   }
 
+  bool file_handler::in_progress(const available_file& file) const
+  {
+    if(exists_internal(file.file_info) || is_blocked_internal(file.file_info))
+    {
+      return true;
+    }
+
+    return false;
+  }
+
   std::optional<mfsync::ofstream_wrapper> file_handler::create_file(requested_file& requested)
   {
     std::scoped_lock lk{mutex_};

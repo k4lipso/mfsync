@@ -36,6 +36,7 @@ namespace mfsync
     stored_files get_stored_files();
     available_files get_available_files();
     std::condition_variable& get_cv_new_available_files();
+    bool in_progress(const available_file& file) const;
 
     std::optional<mfsync::ofstream_wrapper> create_file(requested_file& requested);
     bool finalize_file(const mfsync::file_information& file);
