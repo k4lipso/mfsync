@@ -32,13 +32,13 @@
           devShell = import ./default.nix {
             inherit pkgs;
             libindicators = libindicators;
-            stdenv = pkgs.overrideCC pkgs.stdenv pkgs.gcc10;
+            stdenv = pkgs.overrideCC pkgs.stdenv pkgs.gcc;
             boost = pkgs.boost174;
           };
 
           packages.mfsync = import ./derivation.nix {
             pkgs = pkgs;
-            stdenv = pkgs.overrideCC pkgs.stdenv pkgs.gcc10;
+            stdenv = pkgs.overrideCC pkgs.stdenv pkgs.gcc;
             boost = pkgs.boost174;
           };
 
