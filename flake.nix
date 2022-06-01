@@ -38,8 +38,14 @@
 
           packages.mfsync = import ./derivation.nix {
             pkgs = pkgs;
+            libindicators = libindicators;
             stdenv = pkgs.overrideCC pkgs.stdenv pkgs.gcc;
             boost = pkgs.boost174;
+          };
+
+          apps.mfsync = {
+            type="app";
+            program = "${self.packages.${system}.mfsync}/bin/mfsync";
           };
 
           defaultPackage = self.packages.${system}.mfsync;
