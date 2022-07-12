@@ -1,7 +1,7 @@
 *.swp
 notes.*
 result
-build
+build*
 CMakeLists.txt.user
 .envrc
 *.autosave
