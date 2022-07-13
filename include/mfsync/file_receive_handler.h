@@ -20,9 +20,11 @@ class file_receive_handler
 {
 public:
   file_receive_handler(boost::asio::io_context& context, mfsync::file_handler& file_handler,
+                       size_t max_concurrent_sessions,
                        mfsync::filetransfer::progress_handler* progress);
 
   file_receive_handler(boost::asio::io_context& context, mfsync::file_handler& file_handler,
+                       size_t max_concurrent_sessions,
                        mfsync::filetransfer::progress_handler* progress,
                        std::vector<std::string> files_to_request);
 

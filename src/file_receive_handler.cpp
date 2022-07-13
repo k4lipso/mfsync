@@ -5,26 +5,30 @@
 namespace mfsync
 {
 
-file_receive_handler::file_receive_handler(boost::asio::io_context& context, mfsync::file_handler& file_handler,
+file_receive_handler::file_receive_handler(boost::asio::io_context& context,
+                                           mfsync::file_handler& file_handler,
+                                           size_t max_concurrent_sessions,
                                            filetransfer::progress_handler* progress)
   : io_context_(context)
   , timer_(context)
   , file_handler_(file_handler)
   , request_all_{true}
-  , sessions_{3}
+  , sessions_{max_concurrent_sessions}
   , progress_(progress)
 {
 }
 
-file_receive_handler::file_receive_handler(boost::asio::io_context& context, mfsync::file_handler& file_handler,
-                     filetransfer::progress_handler* progress,
-                     std::vector<std::string> files_to_request)
+file_receive_handler::file_receive_handler(boost::asio::io_context& context,
+                                           mfsync::file_handler& file_handler,
+                                           size_t max_concurrent_sessions,
+                                           filetransfer::progress_handler* progress,
+                                           std::vector<std::string> files_to_request)
   : io_context_(context)
   , timer_(context)
   , file_handler_(file_handler)
   , files_to_request_(std::move(files_to_request))
   , request_all_{false}
-  , sessions_{3}
+  , sessions_{max_concurrent_sessions}
   , progress_(progress)
 {
 }

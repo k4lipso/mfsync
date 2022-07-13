@@ -69,6 +69,7 @@ int main(int argc, char **argv)
     ("request,r", po::value<std::vector<std::string>>()->multitoken()->zero_tokens(),
        "try download the files with the given hash. if no hash is give all available files are downloaded")
     ("port,p", po::value<unsigned short>(), "Manual specify tcp port to listen on. If not specified using default port 8000")
+    ("concurrent_downloads,c", po::value<size_t>(), "maximum concurrent downloads allowed. default is 3")
     ("multicast-address", po::value<std::string>(), "Manual specify multicast address. If not specified 239.255.0.1 is used as default")
     ("multicast-port,m", po::value<unsigned short>(), "Manual specify multicast port. If not specified using default port 30001")
     ("multicast-listen-address,l", po::value<std::string>(), "Manual specify multicast listen address. If not specified using 0.0.0.0")
@@ -136,7 +137,7 @@ int main(int argc, char **argv)
   else
   {
     progress_handler->start();
-    spdlog::set_pattern("[mfsync] %v");
+    spdlog::set_pattern(std::string{mfsync::protocol::MFSYNC_LOG_PREFIX} + " %v");
   }
 
   if(mode == operation_mode::NONE)
@@ -349,7 +350,15 @@ int main(int argc, char **argv)
       file_hashes = vm["request"].as<std::vector<std::string>>();
     }
 
-    receiver = std::make_unique<mfsync::file_receive_handler>(io_service, file_handler, progress_handler.get());
+
+    size_t concurrent_downloads = 3;
+    if(vm.count("concurrent_downloads"))
+    {
+      concurrent_downloads = vm["concurrent_downloads"].as<size_t>();
+    }
+
+    receiver = std::make_unique<mfsync::file_receive_handler>(io_service, file_handler,
+                                                              concurrent_downloads, progress_handler.get());
 
     if(!file_hashes.empty())
     {
