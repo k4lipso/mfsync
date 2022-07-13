@@ -52,12 +52,6 @@ void file_receive_handler::get_files()
     return;
   }
 
-  //if(!session_.expired())
-  //{
-  //  wait();
-  //  return;
-  //}
-
   auto availables = file_handler_.get_available_files();
 
   if(request_all_)

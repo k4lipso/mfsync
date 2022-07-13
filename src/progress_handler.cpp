@@ -1,5 +1,7 @@
 #include "mfsync/progress_handler.h"
 
+#include <spdlog/spdlog.h>
+
 namespace mfsync::filetransfer
 {
 
@@ -50,7 +52,7 @@ namespace progress
         }
       case STATUS::DONE:
         {
-          color = Color::yellow;
+          color = Color::white;
           message = "done: ";
           break;
         }
@@ -70,7 +72,7 @@ namespace progress
 
     auto hash_name = sha256sum;
     hash_name.resize(8);
-    bar->set_option(option::PrefixText(message + hash_name));
+    bar->set_option(option::PostfixText(message + file_name));
     bar->set_option(option::ForegroundColor(color));
 
     return true;
@@ -87,18 +89,13 @@ namespace progress
     const size_t percentage = (static_cast<double>(old_bytes_transferred) / size) * 100;
     bar->set_progress(percentage);
 
-    if(percentage == 100 && !bar->is_completed())
-    {
-      bar->mark_as_completed();
-    }
-
     return true;
   }
 }
 
 progress_handler::progress_handler()
 {
-  show_console_cursor(false);
+  show_console_cursor(true);
   bars_.set_option(option::HideBarWhenComplete{false});
 }
 
@@ -162,10 +159,13 @@ progress_handler::file_progress_ptr progress_handler::create_file_progress(const
 
 progress::bar_ptr progress_handler::create_bar()
 {
-  auto bar = std::make_unique<ProgressBar>(option::BarWidth{50},
+  auto bar = std::make_unique<ProgressBar>(option::BarWidth{0},
+                                           option::Start{""},
+                                           option::End{""},
                                            option::ForegroundColor{Color::red},
-                                           option::ShowPercentage{true}
-                                           /*option::PrefixText{filename}*/);
+                                           option::PrefixText(""),
+                                           option::PostfixText(""),
+                                           option::ShowPercentage{true});
   bars_.push_back(*bar.get());
   return bar;
 }

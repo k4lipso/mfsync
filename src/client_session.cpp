@@ -303,15 +303,13 @@ void client_session_base<SocketType>::handle_read_file_chunk(boost::system::erro
   ofstream_.write(reinterpret_cast<char*>(readbuf_.data()), bytes_transferred, bytes_written_to_requested_);
   bytes_written_to_requested_ += bytes_transferred;
 
-  bar_->bytes_transferred = bytes_written_to_requested_;
-
   if(ofstream_.tellp() < static_cast<std::streamsize>(requested_.file_info.size))
   {
+    bar_->bytes_transferred = bytes_written_to_requested_;
     read_file_chunk();
     return;
   }
 
-  bar_->bytes_transferred = requested_.file_info.size;
   bar_->status = progress::STATUS::COMPARING;
   spdlog::debug("received file {}", requested_.file_info.file_name);
   spdlog::debug("with size in mb: {}", static_cast<double>(requested_.file_info.size / 1048576.0));
@@ -325,6 +323,7 @@ void client_session_base<SocketType>::handle_read_file_chunk(boost::system::erro
     return;
   }
 
+  bar_->bytes_transferred = requested_.file_info.size;
   bar_->status = progress::STATUS::DONE;
   bar_ = nullptr;
 
