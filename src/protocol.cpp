@@ -25,12 +25,12 @@ std::string create_error_message(const std::string& reason)
 std::string create_message_from_requested_file(const requested_file& file)
 {
   std::stringstream message_sstring;
-  message_sstring << "<MFSYNC_HEADER_BEGIN>?";
-  message_sstring << file.file_info.file_name << "?";
-  message_sstring << file.file_info.sha256sum << "?";
-  message_sstring << std::to_string(file.file_info.size) << "?";
-  message_sstring << std::to_string(file.offset) << "?";
-  message_sstring << std::to_string(file.chunksize) << "?";
+  message_sstring << "<MFSYNC_HEADER_BEGIN>^";
+  message_sstring << file.file_info.file_name << "^";
+  message_sstring << file.file_info.sha256sum << "^";
+  message_sstring << std::to_string(file.file_info.size) << "^";
+  message_sstring << std::to_string(file.offset) << "^";
+  message_sstring << std::to_string(file.chunksize) << "^";
   message_sstring << "<MFSYNC_HEADER_END>";
   return message_sstring.str();
 }
@@ -47,7 +47,7 @@ std::optional<requested_file> get_requested_file_from_message(const std::string&
   std::stringstream message_sstring{message};
   std::vector<std::string> tokens;
 
-  while(std::getline(message_sstring, tmp, '?'))
+  while(std::getline(message_sstring, tmp, '^'))
   {
     tokens.push_back(tmp);
   }
@@ -77,10 +77,10 @@ std::vector<std::string> create_messages_from_file_info(const file_handler::stor
   for(const auto& file_info : file_infos)
   {
     std::stringstream message_sstring;
-    message_sstring << file_info.file_name << "?";
-    message_sstring << file_info.sha256sum << "?";
-    message_sstring << std::to_string(file_info.size) << "?";
-    message_sstring << std::to_string(port) << "?";
+    message_sstring << file_info.file_name << "^";
+    message_sstring << file_info.sha256sum << "^";
+    message_sstring << std::to_string(file_info.size) << "^";
+    message_sstring << std::to_string(port) << "^";
 
     message_sstring.seekg(0, std::ios::end);
     auto message_sstring_size = message_sstring.tellg();
@@ -115,7 +115,7 @@ get_available_files_from_message(const std::string& message,
   std::stringstream message_sstring{message};
   std::vector<std::string> tokens;
 
-  while(std::getline(message_sstring, tmp, '?'))
+  while(std::getline(message_sstring, tmp, '^'))
   {
     tokens.push_back(tmp);
   }
