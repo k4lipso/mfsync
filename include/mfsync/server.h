@@ -3,6 +3,7 @@
 
 #include "mfsync/file_handler.h"
 #include "mfsync/server_session.h"
+#include "mfsync/client_session.h"
 
 namespace mfsync::filetransfer
 {
@@ -15,6 +16,11 @@ public:
   void run();
   void stop();
   void enable_tls(const std::string& dh_file, const std::string& cert_file, const std::string& key_file = "");
+
+  void set_progress(mfsync::filetransfer::progress_handler* progress)
+  {
+    progress_ = progress;
+  }
 
 private:
 
@@ -29,6 +35,7 @@ private:
 
   unsigned short port_;
   mfsync::file_handler& file_handler_;
+  mfsync::filetransfer::progress_handler* progress_;
 };
 
 } //closing namespace mfsync::filetransfer

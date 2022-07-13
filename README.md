@@ -101,8 +101,3 @@ The table below shows which modes listen for tcp or udp packages depending on th
 | TCP             | X               |                 |                 | X               |
 
 An X means that the according port has to be openend by the firewall.
-
-##### Todos:
-* prettify output
-* reuse connection if host still has other files to offer
-* many more that iam not aware of right now

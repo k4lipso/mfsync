@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <optional>
 
 #include <boost/asio.hpp>
 
@@ -8,7 +9,7 @@ namespace mfsync
 {
   struct file_information
   {
-    file_information() =default;
+    file_information() = default;
 
     static std::optional<file_information> create_file_information(const std::filesystem::path& path,
                                                                    const std::filesystem::path& base);

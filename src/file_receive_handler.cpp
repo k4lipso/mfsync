@@ -5,21 +5,31 @@
 namespace mfsync
 {
 
-file_receive_handler::file_receive_handler(boost::asio::io_context& context, mfsync::file_handler& file_handler)
+file_receive_handler::file_receive_handler(boost::asio::io_context& context,
+                                           mfsync::file_handler& file_handler,
+                                           size_t max_concurrent_sessions,
+                                           filetransfer::progress_handler* progress)
   : io_context_(context)
   , timer_(context)
   , file_handler_(file_handler)
   , request_all_{true}
+  , sessions_{max_concurrent_sessions}
+  , progress_(progress)
 {
 }
 
-file_receive_handler::file_receive_handler(boost::asio::io_context& context, mfsync::file_handler& file_handler,
-                     std::vector<std::string> files_to_request)
+file_receive_handler::file_receive_handler(boost::asio::io_context& context,
+                                           mfsync::file_handler& file_handler,
+                                           size_t max_concurrent_sessions,
+                                           filetransfer::progress_handler* progress,
+                                           std::vector<std::string> files_to_request)
   : io_context_(context)
   , timer_(context)
   , file_handler_(file_handler)
   , files_to_request_(std::move(files_to_request))
   , request_all_{false}
+  , sessions_{max_concurrent_sessions}
+  , progress_(progress)
 {
 }
 
@@ -39,7 +49,8 @@ void file_receive_handler::get_files()
 {
   std::scoped_lock lk{mutex_};
 
-  if(!session_.expired())
+  if(std::none_of(sessions_.begin(), sessions_.end(), [](const auto& session_ptr)
+    { return session_ptr.expired();}))
   {
     wait();
     return;
@@ -52,6 +63,12 @@ void file_receive_handler::get_files()
     for(auto& available : availables)
     {
       add_to_request_queue(std::move(available));
+    }
+
+    if(request_queue_.empty())
+    {
+      wait();
+      return;
     }
 
     start_new_session();
@@ -98,24 +115,34 @@ void file_receive_handler::enable_tls(const std::string& cert_file)
 
 void file_receive_handler::start_new_session()
 {
-  if(ctx_.has_value())
+  std::for_each(sessions_.begin(), sessions_.end(), [this](auto& session_ptr)
   {
-    auto session = std::make_shared<mfsync::filetransfer::client_tls_session>(io_context_,
-                                                                              ctx_.value(),
-                                                                              request_queue_,
-                                                                              file_handler_);
-    session_ = std::dynamic_pointer_cast<mfsync::filetransfer::session_base>(session);
-    session->start_request();
-  }
-  else
-  {
-    auto session = std::make_shared<mfsync::filetransfer::client_session>(io_context_,
-                                                                          request_queue_,
-                                                                          file_handler_);
-    session_ = std::dynamic_pointer_cast<mfsync::filetransfer::session_base>(session);
-    session->start_request();
+    if(!session_ptr.expired())
+    {
+      return;
+    }
 
-  }
+    std::shared_ptr<mfsync::filetransfer::session_base> session = nullptr;
+    if(ctx_.has_value())
+    {
+      session =
+          std::make_shared<mfsync::filetransfer::client_tls_session>(io_context_,
+                                                                     ctx_.value(),
+                                                                     request_queue_,
+                                                                     file_handler_);
+    }
+    else
+    {
+      session =
+          std::make_shared<mfsync::filetransfer::client_session>(io_context_,
+                                                                 request_queue_,
+                                                                 file_handler_);
+    }
+
+    session_ptr = session;
+    session->set_progress(progress_);
+    session->start_request();
+  });
 }
 
 void file_receive_handler::add_to_request_queue(available_file file)
@@ -128,13 +155,18 @@ void file_receive_handler::add_to_request_queue(available_file file)
     return;
   }
 
+  if(file_handler_.in_progress(file))
+  {
+    return;
+  }
+
   spdlog::debug("adding file to request queue: {}", file.file_info.file_name);
   request_queue_.push_back(std::move(file));
 }
 
 void file_receive_handler::wait()
 {
-  timer_.expires_from_now(boost::posix_time::milliseconds(10));
+  timer_.expires_from_now(boost::posix_time::milliseconds(50));
   timer_.async_wait(
       boost::bind(&file_receive_handler::handle_timeout, this,
         boost::asio::placeholders::error));

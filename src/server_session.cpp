@@ -191,6 +191,13 @@ void server_session_base<SocketType>::handle_read_confirmation(boost::system::er
 
   spdlog::debug("Start sending file: {}", requested_.file_info.file_name);
   spdlog::debug("FileSize: {}, Sha256sum: {}", file_size, requested_.file_info.sha256sum);
+
+  if(bar_ == nullptr)
+  {
+    bar_ = progress_->create_file_progress(requested_.file_info);
+    bar_->status = progress::STATUS::UPLOADING;
+  }
+
   write_file();
 }
 
@@ -199,11 +206,16 @@ void server_session_base<SocketType>::write_file()
 {
   if(!ifstream_)
   {
+    bar_->bytes_transferred = requested_.file_info.size;
+    bar_->status = progress::STATUS::DONE;
+    bar_ = nullptr;
     return;
   }
 
   writebuf_.resize(requested_.chunksize);
   ifstream_.read(writebuf_.data(), writebuf_.size());
+
+  bar_->bytes_transferred = ifstream_.tellg();
 
   if(ifstream_.fail() && !ifstream_.eof())
   {
@@ -211,6 +223,7 @@ void server_session_base<SocketType>::write_file()
     //handle_error();
     return;
   }
+
 
   async_write(socket_,
     boost::asio::buffer(writebuf_.data(), writebuf_.size()),

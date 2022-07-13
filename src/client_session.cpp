@@ -165,6 +165,8 @@ void client_session_base<SocketType>::request_file()
   if(!output_file_stream.has_value())
   {
     spdlog::debug("file creation failed. abort session");
+    spdlog::debug("filename: {}, sha256sum: {}",
+                  requested_.file_info.file_name, requested_.file_info.sha256sum);
     handle_error();
     return;
   }
@@ -236,6 +238,13 @@ void client_session_base<SocketType>::handle_read_file_request_response(boost::s
         if(!ec)
         {
           spdlog::debug("Done sending response");
+
+          if(me->bar_ == nullptr)
+          {
+            me->bar_ = me->progress_->create_file_progress(me->requested_.file_info) ;
+            me->bar_->status = progress::STATUS::DOWNLOADING;
+          }
+
           me->read_file_chunk();
         }
         else
@@ -296,10 +305,12 @@ void client_session_base<SocketType>::handle_read_file_chunk(boost::system::erro
 
   if(ofstream_.tellp() < static_cast<std::streamsize>(requested_.file_info.size))
   {
+    bar_->bytes_transferred = bytes_written_to_requested_;
     read_file_chunk();
     return;
   }
 
+  bar_->status = progress::STATUS::COMPARING;
   spdlog::debug("received file {}", requested_.file_info.file_name);
   spdlog::debug("with size in mb: {}", static_cast<double>(requested_.file_info.size / 1048576.0));
 
@@ -312,9 +323,13 @@ void client_session_base<SocketType>::handle_read_file_chunk(boost::system::erro
     return;
   }
 
-  spdlog::info("received file: {} - {} - {}", requested_.file_info.file_name,
-                                              requested_.file_info.sha256sum,
-                                              requested_.file_info.size);
+  bar_->bytes_transferred = requested_.file_info.size;
+  bar_->status = progress::STATUS::DONE;
+  bar_ = nullptr;
+
+  //spdlog::info("received file: {} - {} - {}", requested_.file_info.file_name,
+  //                                            requested_.file_info.sha256sum,
+  //                                            requested_.file_info.size);
 
   readbuf_.clear();
   //TODO: start_request currently does handshake again which leads to failing tls connection foo
