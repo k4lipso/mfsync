@@ -257,6 +257,9 @@ int main(int argc, char **argv)
 
   const auto mode = misc::get_mode(vm["mode"].as<std::string>());
 
+  std::unique_ptr<mfsync::filetransfer::progress_handler> progress_handler
+      = std::make_unique<mfsync::filetransfer::progress_handler>();
+
   if(vm.count("trace"))
   {
     spdlog::set_level(spdlog::level::trace);
@@ -267,7 +270,8 @@ int main(int argc, char **argv)
   }
   else
   {
-    spdlog::set_pattern("%v");
+    progress_handler->start();
+    spdlog::set_pattern("[mfsync] %v");
   }
 
   if(mode == operation_mode::NONE)
@@ -408,8 +412,6 @@ int main(int argc, char **argv)
   std::vector<std::unique_ptr<mfsync::multicast::file_sender>> sender_vec;
   std::unique_ptr<mfsync::file_receive_handler> receiver = nullptr;
   std::unique_ptr<mfsync::filetransfer::server> file_server = nullptr;
-  std::unique_ptr<mfsync::filetransfer::progress_handler> progress_handler
-      = std::make_unique<mfsync::filetransfer::progress_handler>();
 
   try
   {

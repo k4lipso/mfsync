@@ -7,7 +7,6 @@ progress_handler::progress_handler()
 {
   show_console_cursor(false);
   bars_.set_option(option::HideBarWhenComplete{false});
-  start();
 }
 
 progress_handler::~progress_handler()
