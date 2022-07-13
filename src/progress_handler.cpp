@@ -7,29 +7,7 @@ progress_handler::progress_handler()
 {
   show_console_cursor(false);
   bars_.set_option(option::HideBarWhenComplete{false});
-
-  worker_thread_ = std::thread{[this]()
-  {
-    while(running_)
-    {
-      for(int i = 0; i < percentages_.size(); ++i)
-      {
-        if(percentages_[i] == 100)
-        {
-          if(!bars_[i].is_completed())
-          {
-            bars_[i].set_progress(percentages_[i]);
-            bars_[i].mark_as_completed();
-          }
-
-          continue;
-        }
-
-        bars_[i].set_progress(percentages_[i]);
-      }
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    }
-  }};
+  start();
 }
 
 progress_handler::~progress_handler()
@@ -37,31 +15,33 @@ progress_handler::~progress_handler()
   show_console_cursor(true);
 }
 
-std::size_t progress_handler::create_bar(const std::string& filename)
+void progress_handler::start()
 {
-  std::unique_lock lk{mutex_};
+  const auto progress_loop = [this]() {
+    while(running_)
+    {
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      std::unique_lock lk{mutex_};
 
-  auto bar = std::make_shared<ProgressBar>(option::BarWidth{50},
-                                           option::ForegroundColor{Color::red},
-                                           //option::Start{"\r["},
-                                           option::ShowPercentage{true},
-                                           option::PrefixText{filename});
-  others_.emplace_back(bar);
+      bool has_changed = false;
+      for(const auto& file_progress : files_)
+      {
+        has_changed |= file_progress->update_bar();
+      }
 
-  auto index = bars_.push_back(*others_.back().get());
-  percentages_.push_back(0);
-  return index;
+      if(has_changed)
+      {
+        bars_.print_progress();
+      }
+    }
+  };
+
+  worker_thread_ = std::thread{progress_loop};
 }
 
-ProgressBar& progress_handler::get(size_t index)
+void progress_handler::stop()
 {
-  return bars_[index];
-}
-
-void progress_handler::set_progress(size_t index, int percentage)
-{
-  //bars_[index].set_progress(percentage);
-  percentages_[index] = percentage;
+  running_ = false;
 }
 
 } //closing namespace mfsync::filetransfer

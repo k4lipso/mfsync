@@ -192,13 +192,10 @@ void server_session_base<SocketType>::handle_read_confirmation(boost::system::er
   spdlog::debug("Start sending file: {}", requested_.file_info.file_name);
   spdlog::debug("FileSize: {}, Sha256sum: {}", file_size, requested_.file_info.sha256sum);
 
-  if(!progress_index_.has_value())
+  if(bar_ == nullptr)
   {
-    auto hash_name = requested_.file_info.sha256sum;
-    hash_name.resize(8);
-    std::string msg = hash_name + std::string{": Uploading "};
-    progress_index_ = progress_->create_bar(msg);
-    progress_->set_option(progress_index_.value(), indicators::option::ForegroundColor(indicators::Color::blue));
+    bar_ = progress_->create_file_progress(requested_.file_info);
+    bar_->status = progress::STATUS::UPLOADING;
   }
 
   write_file();
@@ -209,27 +206,16 @@ void server_session_base<SocketType>::write_file()
 {
   if(!ifstream_)
   {
-    auto hash_name = requested_.file_info.sha256sum;
-    hash_name.resize(8);
-    std::string new_msg = hash_name + std::string{": Uploaded "};
-    progress_->set_progress(progress_index_.value(), 100);
-    progress_->set_option(progress_index_.value(), indicators::option::ForegroundColor(indicators::Color::yellow));
-    progress_->set_option(progress_index_.value(), indicators::option::PrefixText(new_msg));
-    progress_index_ = std::nullopt;
+    bar_->bytes_transferred = requested_.file_info.size;
+    bar_->status = progress::STATUS::DONE;
+    bar_ = nullptr;
     return;
   }
 
   writebuf_.resize(requested_.chunksize);
   ifstream_.read(writebuf_.data(), writebuf_.size());
 
-  const int percentage = (static_cast<double>(ifstream_.tellg()) / requested_.file_info.size) * 100;
-
-  if(percentage != percentage_)
-  {
-    percentage_ = percentage;
-  }
-
-  progress_->set_progress(progress_index_.value(), percentage_);
+  bar_->bytes_transferred = ifstream_.tellg();
 
   if(ifstream_.fail() && !ifstream_.eof())
   {

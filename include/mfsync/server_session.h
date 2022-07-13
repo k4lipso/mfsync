@@ -45,8 +45,7 @@ protected:
   std::vector<char> writebuf_;
   std::ifstream ifstream_;
   progress_handler* progress_;
-  int percentage_ = 0;
-  std::optional<std::size_t> progress_index_ = std::nullopt;
+  progress::file_progress_information* bar_ = nullptr;
 };
 
 class server_session : public server_session_base<boost::asio::ip::tcp::socket>

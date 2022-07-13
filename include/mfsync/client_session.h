@@ -58,8 +58,7 @@ protected:
   std::vector<uint8_t> readbuf_;
   mfsync::ofstream_wrapper ofstream_;
   progress_handler* progress_;
-  std::optional<std::size_t> progress_index_ = std::nullopt;
-  int percentage_ = 0;
+  progress::file_progress_information* bar_ = nullptr;
 };
 
 class client_session : public client_session_base<boost::asio::ip::tcp::socket>
