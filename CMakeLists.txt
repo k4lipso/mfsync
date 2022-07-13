@@ -51,6 +51,7 @@ add_executable(mfsync
   src/server_session.cpp
   src/client_session.cpp
   src/server.cpp
+  src/progress_handler.cpp
   )
 
 target_include_directories(mfsync
