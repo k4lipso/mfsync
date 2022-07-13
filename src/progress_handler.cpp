@@ -52,7 +52,7 @@ namespace progress
         }
       case STATUS::DONE:
         {
-          color = Color::white;
+          color = Color::unspecified;
           message = "done: ";
           break;
         }
