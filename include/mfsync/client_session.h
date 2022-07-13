@@ -18,6 +18,16 @@ class session_base
 {
 public:
   virtual ~session_base() = default;
+
+  virtual void start_request() = 0;
+
+  void set_progress(progress_handler* progress)
+  {
+    progress_ = progress;
+  }
+
+protected:
+  progress_handler* progress_ = nullptr;
 };
 
 template<typename SocketType>
@@ -32,13 +42,7 @@ public:
   virtual ~client_session_base() = default;
 
   SocketType& get_socket();
-  virtual void start_request() = 0;
   void request_file();
-
-  void set_progress(progress_handler* progress)
-  {
-    progress_ = progress;
-  }
 
 protected:
   void read_file_request_response();
@@ -57,7 +61,6 @@ protected:
   boost::asio::streambuf stream_buffer_;
   std::vector<uint8_t> readbuf_;
   mfsync::ofstream_wrapper ofstream_;
-  progress_handler* progress_;
   progress::file_progress_information* bar_ = nullptr;
 };
 

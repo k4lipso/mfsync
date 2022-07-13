@@ -117,34 +117,34 @@ void file_receive_handler::enable_tls(const std::string& cert_file)
 
 void file_receive_handler::start_new_session()
 {
-  if(ctx_.has_value())
+  std::for_each(sessions_.begin(), sessions_.end(), [this](auto& session_ptr)
   {
-    //auto session = std::make_shared<mfsync::filetransfer::client_tls_session>(io_context_,
-    //                                                                          ctx_.value(),
-    //                                                                          request_queue_,
-    //                                                                          file_handler_);
-    //session_ = std::dynamic_pointer_cast<mfsync::filetransfer::session_base>(session);
-    //session->set_progress(progress_);
-    //session->start_request();
-  }
-  else
-  {
-    std::for_each(sessions_.begin(), sessions_.end(), [this](auto& session_ptr)
+    if(!session_ptr.expired())
     {
-      if(!session_ptr.expired())
-      {
-        return;
-      }
+      return;
+    }
 
+    std::shared_ptr<mfsync::filetransfer::session_base> session = nullptr;
+    if(ctx_.has_value())
+    {
+      session =
+          std::make_shared<mfsync::filetransfer::client_tls_session>(io_context_,
+                                                                     ctx_.value(),
+                                                                     request_queue_,
+                                                                     file_handler_);
+    }
+    else
+    {
+      session =
+          std::make_shared<mfsync::filetransfer::client_session>(io_context_,
+                                                                 request_queue_,
+                                                                 file_handler_);
+    }
 
-      auto session = std::make_shared<mfsync::filetransfer::client_session>(io_context_,
-                                                                            request_queue_,
-                                                                            file_handler_);
-      session_ptr = std::dynamic_pointer_cast<mfsync::filetransfer::session_base>(session);
-      session->set_progress(progress_);
-      session->start_request();
-    });
-  }
+    session_ptr = session;
+    session->set_progress(progress_);
+    session->start_request();
+  });
 }
 
 void file_receive_handler::add_to_request_queue(available_file file)
