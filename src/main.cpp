@@ -287,12 +287,14 @@ int main(int argc, char **argv)
 
   if(mode != operation_mode::FETCH)
   {
-    storage_initialization_thread = std::thread([&file_handler, &destination_path]()
+    storage_initialization_thread = std::thread{[&file_handler, &destination_path]()
     {
       spdlog::info("start initializing storage. depending on filesizes this may take a while");
       file_handler.init_storage(destination_path);
       spdlog::info("done initializing storage");
-    });
+    }};
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 
   if(mode != operation_mode::FETCH && mode != operation_mode::GET)
