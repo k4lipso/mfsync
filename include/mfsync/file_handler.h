@@ -22,8 +22,6 @@ namespace mfsync
     file_handler() = default;
     ~file_handler() = default;
 
-    file_handler(std::string storage_path);
-
     void init_storage(std::string storage_path);
     bool can_be_stored(const file_information& file_info) const;
     bool is_available(const std::string& sha256sum) const;
@@ -51,7 +49,7 @@ namespace mfsync
     bool update_stored_files();
     void update_stored_files(const std::filesystem::path& path);
     void update_available_files();
-    void add_stored_file(file_information file);
+    void add_stored_file(file_information file,bool block = true);
     bool stored_file_exists(const file_information& file) const;
     bool stored_file_exists(const std::string& sha256sum) const;
     std::filesystem::path get_path_to_stored_file(const file_information& file_info) const;
@@ -71,6 +69,7 @@ namespace mfsync
     bool print_availables_ = false;
     static constexpr const char* TMP_SUFFIX = ".mfsync";
 
+    std::atomic<bool> storage_init_is_in_progress = false;
     mutable std::mutex mutex_;
   };
 

@@ -8,12 +8,6 @@
 
 namespace mfsync
 {
-  file_handler::file_handler(std::string storage_path)
-    : storage_path_{std::move(storage_path)}
-  {
-    update_stored_files();
-  }
-
   void file_handler::init_storage(std::string storage_path)
   {
     if(!storage_path_.empty())
@@ -22,6 +16,7 @@ namespace mfsync
     }
 
     storage_path_ = std::move(storage_path);
+
     update_stored_files();
   }
 
@@ -194,7 +189,6 @@ namespace mfsync
       output.open(tmp_path.c_str(), std::ios::out|std::ios::binary);
     }
 
-
     if(!output)
     {
       spdlog::error("failed to create file");
@@ -250,7 +244,7 @@ namespace mfsync
                         locked_files_.end());
 
     std::filesystem::rename(tmp_path, get_storage_path(file));
-    add_stored_file(file);
+    add_stored_file(file, false);
     update_stored_files();
     return true;
   }
@@ -300,6 +294,13 @@ namespace mfsync
 
   bool file_handler::update_stored_files()
   {
+    if(storage_init_is_in_progress)
+    {
+      return false;
+    }
+
+    storage_init_is_in_progress = true;
+
     if(storage_path_.empty())
     {
       return false;
@@ -315,6 +316,8 @@ namespace mfsync
       { return !std::filesystem::exists(get_path_to_stored_file(file_info));});
 
     update_stored_files(storage_path_);
+
+    storage_init_is_in_progress = false;
     return true;
   }
 
@@ -369,15 +372,22 @@ namespace mfsync
     }
   }
 
-  void file_handler::add_stored_file(file_information file)
+  void file_handler::add_stored_file(file_information file, bool block /* = false */)
   {
+    std::unique_lock lk{mutex_, std::defer_lock};
+
+    if(block)
+    {
+      lk.lock();
+    }
+
     const auto result = stored_files_.insert(std::move(file));
 
     if(std::get<1>(result))
     {
       spdlog::debug("adding file to storage: \"{}\" - {} - {}", (*std::get<0>(result)).sha256sum,
-                                            (*std::get<0>(result)).file_name,
-                                            (*std::get<0>(result)).size);
+                                                                (*std::get<0>(result)).file_name,
+                                                                (*std::get<0>(result)).size);
     }
   }
 

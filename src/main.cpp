@@ -283,12 +283,16 @@ int main(int argc, char **argv)
   {
 
   auto file_handler = mfsync::file_handler{};
+  std::thread storage_initialization_thread;
 
   if(mode != operation_mode::FETCH)
   {
-    spdlog::info("start initializing storage. depending on filesizes this may take a while");
-    file_handler.init_storage(destination_path);
-    spdlog::info("done initializing storage");
+    storage_initialization_thread = std::thread([&file_handler, &destination_path]()
+    {
+      spdlog::info("start initializing storage. depending on filesizes this may take a while");
+      file_handler.init_storage(destination_path);
+      spdlog::info("done initializing storage");
+    });
   }
 
   if(mode != operation_mode::FETCH && mode != operation_mode::GET)
