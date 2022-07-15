@@ -293,8 +293,6 @@ int main(int argc, char **argv)
       file_handler.init_storage(destination_path);
       spdlog::info("done initializing storage");
     }};
-
-    std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 
   if(mode != operation_mode::FETCH && mode != operation_mode::GET)

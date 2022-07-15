@@ -46,7 +46,7 @@ namespace mfsync
 
     std::filesystem::path get_tmp_path(const file_information& file_info) const;
     std::filesystem::path get_storage_path(const file_information& file_info) const;
-    bool update_stored_files();
+    bool update_stored_files(bool init_call = false);
     void update_stored_files(const std::filesystem::path& path);
     void update_available_files();
     void add_stored_file(file_information file, bool block = true);
@@ -66,10 +66,11 @@ namespace mfsync
     locked_files locked_files_;
 
     bool tmp_folder_initialized_ = false;
+    bool storage_initialized_ = false;
     bool print_availables_ = false;
     static constexpr const char* TMP_SUFFIX = ".mfsync";
 
-    std::atomic<bool> storage_init_is_in_progress = false;
+    std::atomic<bool> storage_init_is_in_progress_ = false;
     mutable std::mutex mutex_;
   };
 

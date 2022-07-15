@@ -17,7 +17,8 @@ namespace mfsync
 
     storage_path_ = std::move(storage_path);
 
-    update_stored_files();
+    update_stored_files(true);
+    storage_initialized_ = true;
   }
 
   bool file_handler::can_be_stored(const file_information& file_info) const
@@ -292,14 +293,18 @@ namespace mfsync
     return tmp_path;
   }
 
-  bool file_handler::update_stored_files()
+  bool file_handler::update_stored_files(bool init_call /* = false */)
   {
-    if(storage_init_is_in_progress)
+    if(!storage_initialized_ && !init_call)
     {
       return false;
     }
 
-    storage_init_is_in_progress = true;
+    bool expected = false;
+    if(!storage_init_is_in_progress_.compare_exchange_strong(expected, true))
+    {
+      return false;
+    }
 
     if(storage_path_.empty())
     {
@@ -317,7 +322,7 @@ namespace mfsync
 
     update_stored_files(storage_path_);
 
-    storage_init_is_in_progress = false;
+    storage_init_is_in_progress_ = false;
     return true;
   }
 
