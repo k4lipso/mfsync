@@ -42,8 +42,14 @@ namespace mfsync
 
     void print_availables(bool value);
 
+    void set_progress(filetransfer::progress_handler* progress)
+    {
+      progress_ = progress;
+    }
+
   private:
 
+    bool is_tmp_file(const std::filesystem::path& path) const;
     std::filesystem::path get_tmp_path(const file_information& file_info) const;
     std::filesystem::path get_storage_path(const file_information& file_info) const;
     bool update_stored_files(bool init_call = false);

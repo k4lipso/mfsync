@@ -342,13 +342,12 @@ namespace mfsync
         continue;
       }
 
-      const std::string name = std::filesystem::relative(entry.path(), storage_path_).string();
-
-      if(name.ends_with(TMP_SUFFIX))
+      if(is_tmp_file(entry))
       {
         continue;
       }
 
+      const std::string name = std::filesystem::relative(entry.path(), storage_path_).string();
       if(std::any_of(stored_files_.begin(), stored_files_.end(),
                      [&name](const auto& file_info)
                      {  return name == file_info.file_name; }))
@@ -366,6 +365,12 @@ namespace mfsync
 
       add_stored_file(std::move(file_info.value()));
     }
+  }
+
+  bool file_handler::is_tmp_file(const std::filesystem::path& path) const
+  {
+    const auto file_name = path.string();
+    return file_name.ends_with(TMP_SUFFIX);
   }
 
   void file_handler::update_available_files()
