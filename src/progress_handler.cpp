@@ -62,6 +62,12 @@ namespace progress
           message = "initializing: ";
           break;
         }
+      case STATUS::INITIALIZED:
+        {
+          color = Color::unspecified;
+          message = "initialized: ";
+          break;
+        }
       case STATUS::UNKNOWN:
         {
           color = Color::white;

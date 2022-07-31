@@ -23,7 +23,8 @@ namespace progress
     DOWNLOADING,
     COMPARING,
     DONE,
-    INITIALIZING //when shasum needs to be calculated on lazy evaluated storage
+    INITIALIZING, //when shasum needs to be calculated on lazy evaluated storage
+    INITIALIZED,
   };
 
   using bar_ptr = std::unique_ptr<ProgressBar>;
