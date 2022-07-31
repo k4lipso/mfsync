@@ -340,7 +340,7 @@ void client_session_base<SocketType>::handle_read_file_chunk(boost::system::erro
 template<typename SocketType>
 void client_session_base<SocketType>::handle_error()
 {
-  spdlog::error("handle_error not implemented yet!!!");
+  spdlog::debug("handle_error not implemented yet!!!");
 }
 
 } //closing namespace mfsync::filetransfer
