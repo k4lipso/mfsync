@@ -92,8 +92,13 @@ namespace progress
     }
 
     old_bytes_transferred.store(bytes_transferred.load());
-    const size_t percentage = (static_cast<double>(old_bytes_transferred) / size) * 100;
+    const size_t percentage = size == 0 ? 100 : (static_cast<double>(old_bytes_transferred) / size) * 100;
     bar->set_progress(percentage);
+
+    if(percentage == 100 && !bar->is_completed())
+    {
+      bar->mark_as_completed();
+    }
 
     return true;
   }
