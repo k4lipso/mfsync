@@ -170,9 +170,9 @@ progress_handler::file_progress_ptr progress_handler::create_file_progress(const
 
 progress::bar_ptr progress_handler::create_bar()
 {
-  auto bar = std::make_unique<ProgressBar>(option::BarWidth{0},
-                                           option::Start{""},
-                                           option::End{""},
+  auto bar = std::make_unique<ProgressBar>(option::BarWidth{20},
+                                           //option::Start{""},
+                                           //option::End{""},
                                            option::ForegroundColor{Color::red},
                                            option::PrefixText(""),
                                            option::PostfixText(""),
