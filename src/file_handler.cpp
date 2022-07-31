@@ -159,6 +159,12 @@ namespace mfsync
       return std::nullopt;
     }
 
+    if(std::filesystem::exists(get_storage_path(requested.file_info)))
+    {
+      spdlog::debug("Tried creating existing file that was not initialized yet");
+      return std::nullopt;
+    }
+
     const auto tmp_path = get_tmp_path(requested.file_info);
     const auto file_exists = std::filesystem::exists(tmp_path);
 
