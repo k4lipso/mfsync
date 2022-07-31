@@ -283,15 +283,15 @@ int main(int argc, char **argv)
   {
 
   auto file_handler = mfsync::file_handler{};
+  file_handler.set_progress(progress_handler.get());
+
   std::thread storage_initialization_thread;
 
   if(mode != operation_mode::FETCH)
   {
     storage_initialization_thread = std::thread{[&file_handler, &destination_path]()
     {
-      spdlog::info("start initializing storage. depending on filesizes this may take a while");
       file_handler.init_storage(destination_path);
-      spdlog::info("done initializing storage");
     }};
   }
 
@@ -387,6 +387,8 @@ int main(int argc, char **argv)
   {
     workers.emplace_back([&io_service](){ io_service.run(); });
   }
+
+  std::this_thread::sleep_for(std::chrono::seconds(1));
 
   auto timeout = std::chrono::system_clock::now();
   if(vm.count("wait-until"))

@@ -328,12 +328,43 @@ namespace mfsync
 
     update_stored_files(storage_path_);
 
+    if(bar_ != nullptr)
+    {
+      bar_->status = filetransfer::progress::STATUS::INITIALIZED;
+      bar_ = nullptr;
+    }
+
     storage_init_is_in_progress_ = false;
     return true;
   }
 
   void file_handler::update_stored_files(const std::filesystem::path& path)
   {
+    if(!storage_initialized_ && progress_ != nullptr)
+    {
+      if(bar_ == nullptr)
+      {
+        using std::filesystem::directory_iterator;
+        using fp = bool (*)( const std::filesystem::path&);
+
+        const auto is_reqular_and_no_tmp_file = [this](const std::filesystem::path& path)
+        {
+          return std::filesystem::is_regular_file(path) && !is_tmp_file(path);
+        };
+
+        const auto amount_files = std::count_if(std::filesystem::recursive_directory_iterator(path),
+                                                std::filesystem::recursive_directory_iterator{},
+                                                is_reqular_and_no_tmp_file);
+
+        auto dummy_file_info = file_information();
+        dummy_file_info.file_name = "storage";
+        dummy_file_info.size = amount_files;
+
+        bar_ = progress_->create_file_progress(dummy_file_info);
+        bar_->status = filetransfer::progress::STATUS::INITIALIZING;
+      }
+    }
+
     for(const auto &entry : std::filesystem::directory_iterator(path))
     {
       if(std::filesystem::is_directory(entry))
@@ -364,6 +395,11 @@ namespace mfsync
       }
 
       add_stored_file(std::move(file_info.value()));
+
+      if(bar_ != nullptr)
+      {
+        bar_->bytes_transferred++;
+      }
     }
   }
 

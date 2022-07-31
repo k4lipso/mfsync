@@ -9,6 +9,7 @@
 
 #include "mfsync/ofstream_wrapper.h"
 #include "mfsync/file_information.h"
+#include "mfsync/progress_handler.h"
 
 namespace mfsync
 {
@@ -64,6 +65,9 @@ namespace mfsync
     bool is_blocked_internal(const file_information& file_info) const;
     bool exists_internal(const std::string& name) const;
     bool exists_internal(const file_information& file_info) const;
+
+    filetransfer::progress_handler* progress_ = nullptr;
+    filetransfer::progress::file_progress_information* bar_ = nullptr;
 
     std::filesystem::path storage_path_;
     stored_files stored_files_;
