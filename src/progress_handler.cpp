@@ -142,6 +142,7 @@ void progress_handler::start()
 void progress_handler::stop()
 {
   running_ = false;
+  worker_thread_.join();
 }
 
 progress_handler::file_progress_ptr progress_handler::create_file_progress(const file_information& file_info)

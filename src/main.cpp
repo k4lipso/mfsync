@@ -410,12 +410,16 @@ int main(int argc, char **argv)
     std::this_thread::sleep_until(timeout);
   }
 
+  progress_handler->stop();
+
   io_service.stop();
 
   for(auto& worker : workers)
   {
     worker.join();
   }
+
+  storage_initialization_thread.join();
 
   }
   catch (std::exception& e)
