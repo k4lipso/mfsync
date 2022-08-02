@@ -23,7 +23,7 @@ message("Compile Opts: ${COMPILE_OPTIONS}")
 
 
 find_package(Threads REQUIRED)
-find_package(OpenSSL REQUIRED COMPONENTS SSL Crypto EXACT)
+find_package(OpenSSL MODULE REQUIRED COMPONENTS SSL Crypto EXACT)
 
 if(NOT TARGET spdlog)
   find_package(spdlog REQUIRED)
@@ -36,7 +36,6 @@ message("Boost information")
 message("Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
 message("Boost_LIBRARY_DIRS: ${Boost_LIBRARY_DIRS}")
 message("Boost Libraries: ${Boost_LIBRARIES}")
-
 
 add_executable(mfsync
   src/main.cpp
@@ -59,6 +58,31 @@ target_include_directories(mfsync
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     ${OPENSSL_INCLUDE_DIR}
 )
+
+
+if(USE_SUBMODULES)
+  include(FetchContent)
+  Set(FETCHCONTENT_QUIET FALSE)
+  FetchContent_Declare(
+    libindicators
+    GIT_REPOSITORY https://github.com/p-ranav/indicators
+    GIT_TAG        a5bc05f32a9c719535054b7fa5306ce5c8d055d8
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
+    GIT_PROGRESS TRUE
+  )
+
+  FetchContent_MakeAvailable(libindicators)
+
+  target_include_directories(mfsync
+    PRIVATE
+      #libindicators/include
+      "${libindicators_SOURCE_DIR}/include"
+  )
+endif()
+
+
 
 message("OpenSSL::Crypto: ${OPENSSL_LIBRARIES}")
 
