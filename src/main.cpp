@@ -124,7 +124,7 @@ int main(int argc, char **argv)
   const auto mode = misc::get_mode(vm["mode"].as<std::string>());
 
   std::unique_ptr<mfsync::filetransfer::progress_handler> progress_handler
-      = std::make_unique<mfsync::filetransfer::progress_handler>();
+    = std::make_unique<mfsync::filetransfer::progress_handler>();
 
   if(vm.count("trace"))
   {
@@ -410,6 +410,11 @@ int main(int argc, char **argv)
     std::this_thread::sleep_until(timeout);
   }
 
+  if(storage_initialization_thread.joinable())
+  {
+    storage_initialization_thread.join();
+  }
+
   progress_handler->stop();
 
   io_service.stop();
@@ -419,7 +424,7 @@ int main(int argc, char **argv)
     worker.join();
   }
 
-  storage_initialization_thread.join();
+  spdlog::debug("stopped...");
 
   }
   catch (std::exception& e)

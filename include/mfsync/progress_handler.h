@@ -67,7 +67,6 @@ public:
   file_progress_ptr create_file_progress(const file_information& file_info);
 
 private:
-
   progress::bar_ptr create_bar();
 
   std::mutex mutex_;

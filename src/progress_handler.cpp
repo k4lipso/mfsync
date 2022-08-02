@@ -112,6 +112,10 @@ progress_handler::progress_handler()
 
 progress_handler::~progress_handler()
 {
+  if(worker_thread_.joinable())
+  {
+    worker_thread_.join();
+  }
   show_console_cursor(true);
 }
 
@@ -142,7 +146,6 @@ void progress_handler::start()
 void progress_handler::stop()
 {
   running_ = false;
-  worker_thread_.join();
 }
 
 progress_handler::file_progress_ptr progress_handler::create_file_progress(const file_information& file_info)
