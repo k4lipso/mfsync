@@ -100,7 +100,7 @@ target_compile_options(mfsync
   )
 
 if(BUILD_TESTS)
-  add_subdirectory(test)
+  add_subdirectory(test/unit)
 endif()
 
 if(BUILD_DOC)
