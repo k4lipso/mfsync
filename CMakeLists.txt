@@ -30,7 +30,7 @@ if(NOT TARGET spdlog)
 endif()
 
 SET(Boost_USE_MULTITHREAD ON)
-FIND_PACKAGE(Boost 1.71.0 REQUIRED COMPONENTS program_options system thread regex filesystem)
+FIND_PACKAGE(Boost 1.74.0 REQUIRED COMPONENTS program_options system thread regex filesystem)
 
 message("Boost information")
 message("Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
