@@ -5,15 +5,15 @@ services:
     build:
       context: ../../
       dockerfile: ./test/e2e/mfsync_share/Dockerfile
-    image: username/masterimage:version
+    image: mfsync_img:testing
     command: bash -c "/mfsync/build/mfsync get /test_data/get --verbose -w 10 && diff --brief --recursive /test_data/combined /test_data/get"
   mfsync_share:
-    image: username/masterimage:version
+    image: mfsync_img:testing
     depends_on:
       - mfsync_get
     command: /mfsync/build/mfsync share /test_data/share --verbose -w 10
   mfsync_sync:
-    image: username/masterimage:version
+    image: mfsync_img:testing
     depends_on:
       - mfsync_get
     command: bash -c "/mfsync/build/mfsync sync /test_data/sync --verbose -w 10 && diff --brief --recursive /test_data/combined /test_data/sync"
