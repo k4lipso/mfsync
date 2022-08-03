@@ -1,6 +1,8 @@
 # mfsync - multicast file synchronisation
 ##### This project is work in progress and may change in the future
 
+![Build](https://github.com/k4lipso/mfsync/actions/workflows/cmake.yml/badge.svg)
+
 mfsync is a command line utility enabling file lookup/announcement using multicast communication. This always works on the local subnet and can work over wider areas if multicast routing is enabled. 
 Files that where announced over multicast can then also be retrieved using mfsync. File transmissions can be interrupted and are continued the next time. File transmissions are not done using multicast, they use direct tcp connections instead.
 
