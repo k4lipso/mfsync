@@ -367,6 +367,11 @@ namespace mfsync
 
     for(const auto &entry : std::filesystem::directory_iterator(path))
     {
+      if(std::filesystem::is_symlink(entry))
+      {
+        continue;
+      }
+
       if(std::filesystem::is_directory(entry))
       {
         update_stored_files(entry);
