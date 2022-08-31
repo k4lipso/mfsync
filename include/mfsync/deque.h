@@ -5,6 +5,7 @@
 #include <optional>
 #include <condition_variable>
 #include <chrono>
+#include <algorithm>
 
 namespace mfsync::concurrent
 {
