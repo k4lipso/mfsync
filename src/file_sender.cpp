@@ -73,6 +73,7 @@ namespace mfsync::multicast
             boost::asio::buffer(message), endpoint_,
             std::bind(&file_sender::handle_send_to, this,
               std::placeholders::_1));
+        std::this_thread::sleep_for(std::chrono::milliseconds(42));
       }
     }
   }
