@@ -37,8 +37,7 @@ message("Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
 message("Boost_LIBRARY_DIRS: ${Boost_LIBRARY_DIRS}")
 message("Boost Libraries: ${Boost_LIBRARIES}")
 
-add_executable(mfsync
-  src/main.cpp
+add_library(libmfsync SHARED
   src/file_information.cpp
   src/file_handler.cpp
   src/ofstream_wrapper.cpp
@@ -51,10 +50,10 @@ add_executable(mfsync
   src/client_session.cpp
   src/server.cpp
   src/progress_handler.cpp
-  )
+)
 
-target_include_directories(mfsync
-  PRIVATE
+target_include_directories(libmfsync
+  PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     ${OPENSSL_INCLUDE_DIR}
 )
@@ -75,26 +74,45 @@ if(USE_SUBMODULES)
 
   FetchContent_MakeAvailable(libindicators)
 
-  target_include_directories(mfsync
-    PRIVATE
-      #libindicators/include
+  target_include_directories(libmfsync
+    PUBLIC
       "${libindicators_SOURCE_DIR}/include"
   )
 endif()
 
-
-
 message("OpenSSL::Crypto: ${OPENSSL_LIBRARIES}")
 
-target_link_libraries(mfsync
-  PRIVATE
-    Boost::program_options
+target_link_libraries(libmfsync
+  PUBLIC
     OpenSSL::SSL
     OpenSSL::Crypto
     spdlog::spdlog
 )
 
+add_executable(mfsync
+  src/main.cpp
+)
+
+add_dependencies(mfsync libmfsync)
+
+target_include_directories(mfsync
+  PRIVATE
+    libmfsync
+)
+
+target_link_libraries(mfsync
+  PRIVATE
+    libmfsync
+    Boost::program_options
+    spdlog::spdlog
+)
+
 target_compile_options(mfsync
+  PUBLIC
+  -DBOOST_LOG_DYN_LINK
+  )
+
+target_compile_options(libmfsync
   PUBLIC
   -DBOOST_LOG_DYN_LINK
   )
