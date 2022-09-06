@@ -15,6 +15,10 @@ target_link_libraries(first_test
     Catch2::Catch2
 )
 
+add_custom_command(TARGET first_test PRE_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_data $<TARGET_FILE_DIR:first_test>)
+
 include(CTest)
 include(Catch)
 catch_discover_tests(first_test)
