@@ -4,19 +4,35 @@
 
 #include "mfsync/file_handler.h"
 
-unsigned int Factorial( unsigned int number ) {
-    return number <= 1 ? number : Factorial(number-1)*number;
-}
+TEST_CASE("storage test", "[file_handler]") {
+    auto handler = mfsync::file_handler();
+    const auto stored = handler.get_stored_files();
+    REQUIRE(stored.empty());
 
-TEST_CASE( "mfsync example test", "[example_test]" ) {
-  auto handler = mfsync::file_handler();
-  const auto stored = handler.get_stored_files();
-  REQUIRE(stored.empty());
-}
+    handler.init_storage("data");
+    const auto stored_new = handler.get_stored_files();
+    REQUIRE(stored_new.size() == 2);
 
-TEST_CASE( "Factorials are computed", "[factorial]" ) {
-    REQUIRE( Factorial(1) == 1 );
-    REQUIRE( Factorial(2) == 2 );
-    REQUIRE( Factorial(3) == 6 );
-    REQUIRE( Factorial(10) == 3628800 );
+    mfsync::file_information some_file_info;
+    for (const auto& stored_file : stored_new) {
+        REQUIRE(handler.is_stored(stored_file));
+
+        // change shasum
+        some_file_info = stored_file;
+        some_file_info.sha256sum = "NON EXISTING";
+        REQUIRE(!handler.is_stored(some_file_info));
+
+        // change filename
+        some_file_info = stored_file;
+        some_file_info.file_name = "NON EXISTING";
+        REQUIRE(handler.is_stored(some_file_info));
+    }
+
+    REQUIRE(handler.is_stored("NOT STORED") == false);
+
+    auto available = mfsync::available_file{
+        some_file_info, boost::asio::ip::make_address("8.23.42.17"), 1337};
+
+    handler.add_available_file(available);
+    REQUIRE(!handler.is_available(available.file_info.sha256sum));
 }
