@@ -333,8 +333,8 @@ namespace mfsync
       bar_->status = filetransfer::progress::STATUS::INITIALIZED;
       bar_ = nullptr;
     }
-
     storage_init_is_in_progress_ = false;
+
     return true;
   }
 
