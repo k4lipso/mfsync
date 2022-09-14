@@ -11,6 +11,10 @@ stdenv.mkDerivation {
   depsBuildBuild = [ ];
   buildInputs = [ libindicators pkgs.catch2 pkgs.spdlog pkgs.openssl boost pkgs.boost-build pkgs.doxygen pkgs.catch2 ];
 
+  cmakeFlags = [
+    "-DBUILD_STATIC=On"
+  ];
+
   installPhase = ''
     mkdir -p $out/bin
     cp mfsync $out/bin/

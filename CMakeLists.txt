@@ -8,6 +8,7 @@ project("mfsync" CXX)
 option(BUILD_TESTS "test will be build" OFF)
 option(BUILD_DOC "build documentation" OFF)
 option(USE_SUBMODULES "built using submodules. this is only needed when building without nix" OFF)
+option(BUILD_STATIC "static link libmfsync" OFF)
 
 add_compile_options(
   -Wall
@@ -37,7 +38,7 @@ message("Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
 message("Boost_LIBRARY_DIRS: ${Boost_LIBRARY_DIRS}")
 message("Boost Libraries: ${Boost_LIBRARIES}")
 
-add_library(libmfsync SHARED
+set(LIBMFSYNC_FILES
   src/file_information.cpp
   src/file_handler.cpp
   src/ofstream_wrapper.cpp
@@ -50,7 +51,17 @@ add_library(libmfsync SHARED
   src/client_session.cpp
   src/server.cpp
   src/progress_handler.cpp
+  )
+
+if(BUILD_STATIC)
+add_library(libmfsync STATIC
+  ${LIBMFSYNC_FILES}
 )
+else()
+add_library(libmfsync SHARED
+  ${LIBMFSYNC_FILES}
+)
+endif()
 
 target_include_directories(libmfsync
   PUBLIC
