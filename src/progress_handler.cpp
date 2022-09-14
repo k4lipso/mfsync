@@ -76,7 +76,7 @@ namespace progress
         }
     }
 
-    bar->set_option(option::PostfixText(message + file_name));
+    bar->set_option(option::PrefixText(message + file_name));
     bar->set_option(option::ForegroundColor(color));
 
     return true;
@@ -171,9 +171,9 @@ progress_handler::file_progress_ptr progress_handler::create_file_progress(const
 
 progress::bar_ptr progress_handler::create_bar()
 {
-  auto bar = std::make_unique<ProgressBar>(option::BarWidth{20},
-                                           //option::Start{""},
-                                           //option::End{""},
+  auto bar = std::make_unique<ProgressBar>(option::BarWidth{0},
+                                           option::Start{""},
+                                           option::End{""},
                                            option::ForegroundColor{Color::red},
                                            option::PrefixText(""),
                                            option::PostfixText(""),
