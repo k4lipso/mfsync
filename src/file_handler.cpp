@@ -72,6 +72,12 @@ namespace mfsync
   void file_handler::add_available_file(available_file file)
   {
     std::unique_lock lk{mutex_};
+
+    if(stored_files_.contains(file.file_info))
+    {
+      return;
+    }
+
     const auto it_bool_pair = available_files_.insert(std::move(file));
     lk.unlock();
 
