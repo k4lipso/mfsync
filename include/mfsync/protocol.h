@@ -15,7 +15,7 @@ namespace mfsync::protocol
   constexpr auto MAX_MESSAGE_SIZE = 1024;
   constexpr auto CHUNKSIZE = 1024;
   constexpr auto MFSYNC_HEADER_END = "<MFSYNC_HEADER_END>";
-  constexpr auto MFSYNC_LOG_PREFIX = "[mfsync]";
+  constexpr auto MFSYNC_LOG_PREFIX = "";
 
   std::string create_begin_transmission_message();
   std::string create_error_message(const std::string& reason);
