@@ -66,6 +66,7 @@ int main(int argc, char **argv)
   description.add_options()
     ("help,h", "Display help message")
     ("verbose,v", "Show debug logs")
+    ("version", "print version")
     ("trace,t", "Show sent and received multicast messages")
     ("request,r", po::value<std::vector<std::string>>()->multitoken()->zero_tokens(),
        "try download the files with the given hash. if no hash is give all available files are downloaded")
@@ -104,6 +105,12 @@ int main(int argc, char **argv)
           vm);
 
   po::notify(vm);
+
+  if(vm.count("version"))
+  {
+    std::cout << "mfsync v" << mfsync::protocol::VERSION << '\n';
+    return 0;
+  }
 
   if(vm.count("help"))
   {

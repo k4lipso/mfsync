@@ -16,6 +16,7 @@ namespace mfsync::protocol
   constexpr auto CHUNKSIZE = 1024;
   constexpr auto MFSYNC_HEADER_END = "<MFSYNC_HEADER_END>";
   constexpr auto MFSYNC_LOG_PREFIX = "";
+  constexpr auto VERSION = "0.1.0";
 
   std::string create_begin_transmission_message();
   std::string create_error_message(const std::string& reason);
