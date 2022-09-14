@@ -16,6 +16,7 @@ namespace mfsync
                                                                    const std::filesystem::path& base,
                                                                    bool calculate_shasum = false);
     static std::optional<std::string> get_sha256sum(const std::filesystem::path& path);
+    static bool compare_sha256sum(const file_information& file, const std::filesystem::path& path);
 
     bool operator==(const file_information& rhs) const
     {

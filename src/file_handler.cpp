@@ -225,21 +225,11 @@ namespace mfsync
       return false;
     }
 
-
-    spdlog::debug("calculate sha256sum of {}", file.file_name);
     const auto tmp_path = get_tmp_path(file);
-    const auto sha256sum = file_information::get_sha256sum(tmp_path);
 
 
-    if(!sha256sum.has_value())
+    if(finalize_with_shasum && !file_information::compare_sha256sum(file, tmp_path))
     {
-      spdlog::debug("failed to get_sha256sum");
-      return false;
-    }
-
-    if(sha256sum.value() != file.sha256sum)
-    {
-      spdlog::info("received file has different sha256sum than requested file! Aborting");
       return false;
     }
 

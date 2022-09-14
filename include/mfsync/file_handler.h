@@ -77,6 +77,7 @@ namespace mfsync
 
     bool tmp_folder_initialized_ = false;
     bool storage_initialized_ = false;
+    bool finalize_with_shasum = false;
     bool print_availables_ = false;
     static constexpr const char* TMP_SUFFIX = ".mfsync";
 

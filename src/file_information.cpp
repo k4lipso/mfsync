@@ -84,4 +84,32 @@ std::optional<std::string> file_information::get_sha256sum(const std::filesystem
 
   return std::string{output_buffer.data(), 64};
 }
+
+bool file_information::compare_sha256sum(const file_information& file, const std::filesystem::path& path)
+{
+  if(!file.sha256sum.has_value())
+  {
+    spdlog::error("Comparing file without sha256sum. This is not possible.");
+    return false;
+  }
+
+  spdlog::debug("calculate sha256sum of {}", file.file_name);
+  const auto sha256sum = file_information::get_sha256sum(path);
+
+  if(!sha256sum.has_value())
+  {
+    spdlog::debug("failed to get_sha256sum");
+    return false;
+  }
+
+  if(sha256sum.value() != file.sha256sum)
+  {
+    spdlog::info("received file has different sha256sum than requested file! Aborting");
+    return false;
+  }
+
+  return true;
+}
+
+
 } //closing namespace mfsync
