@@ -17,14 +17,14 @@ TEST_CASE("storage test", "[file_handler]") {
     for (const auto& stored_file : stored_new) {
         REQUIRE(handler.is_stored(stored_file));
 
-        // change shasum
-        some_file_info = stored_file;
-        some_file_info.sha256sum = "NON EXISTING";
-        REQUIRE(!handler.is_stored(some_file_info));
-
         // change filename
         some_file_info = stored_file;
         some_file_info.file_name = "NON EXISTING";
+        REQUIRE(!handler.is_stored(some_file_info));
+
+        // change shasum
+        some_file_info = stored_file;
+        some_file_info.sha256sum = "NON EXISTING";
         REQUIRE(handler.is_stored(some_file_info));
     }
 
@@ -34,5 +34,5 @@ TEST_CASE("storage test", "[file_handler]") {
         some_file_info, boost::asio::ip::make_address("8.23.42.17"), 1337};
 
     handler.add_available_file(available);
-    REQUIRE(!handler.is_available(available.file_info.sha256sum));
+    REQUIRE(!handler.is_available(available.file_info.file_name));
 }
