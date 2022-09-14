@@ -116,14 +116,14 @@ namespace mfsync
   std::set<file_information, std::less<>> file_handler::get_stored_files()
   {
     std::scoped_lock lk{mutex_};
-    update_stored_files();
+    //update_stored_files();
     return stored_files_;
   }
 
   file_handler::available_files file_handler::get_available_files()
   {
     std::scoped_lock lk{mutex_};
-    update_available_files();
+    //update_available_files();
     return available_files_;
   }
 
@@ -422,6 +422,7 @@ namespace mfsync
 
     if(block)
     {
+      spdlog::info("LOCKING");
       lk.lock();
     }
 
