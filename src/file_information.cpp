@@ -9,7 +9,8 @@ namespace mfsync
 {
 
 std::optional<file_information> file_information::create_file_information(const std::filesystem::path& path,
-                                                                          const std::filesystem::path& base)
+                                                                          const std::filesystem::path& base,
+                                                                          bool calculate_shasum /* = false */)
 {
   if(!std::filesystem::is_regular_file(path))
   {
@@ -23,17 +24,21 @@ std::optional<file_information> file_information::create_file_information(const 
     return std::nullopt;
   }
 
-  auto sha256sum = get_sha256sum(path);
-
-  if(!sha256sum.has_value())
+  std::optional<std::string> shasum;
+  if(calculate_shasum)
   {
-    spdlog::debug("couldnt get sha256sum during file_information creation");
-    return std::nullopt;
+    shasum = get_sha256sum(path);
+
+    if(!shasum.has_value())
+    {
+      spdlog::debug("couldnt get sha256sum during file_information creation");
+      return std::nullopt;
+    }
   }
 
   file_information result;
   result.file_name = std::filesystem::relative(path, base).string();
-  result.sha256sum = sha256sum.value();
+  result.sha256sum = shasum;
   result.size = std::filesystem::file_size(path);
 
   return result;

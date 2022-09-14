@@ -27,7 +27,13 @@ std::string create_message_from_requested_file(const requested_file& file)
   std::stringstream message_sstring;
   message_sstring << "<MFSYNC_HEADER_BEGIN>^";
   message_sstring << file.file_info.file_name << "^";
-  message_sstring << file.file_info.sha256sum << "^";
+
+  if(file.file_info.sha256sum.has_value())
+  {
+    message_sstring << file.file_info.sha256sum.value();
+  }
+
+  message_sstring << "^";
   message_sstring << std::to_string(file.file_info.size) << "^";
   message_sstring << std::to_string(file.offset) << "^";
   message_sstring << std::to_string(file.chunksize) << "^";
@@ -78,7 +84,13 @@ std::vector<std::string> create_messages_from_file_info(const file_handler::stor
   {
     std::stringstream message_sstring;
     message_sstring << file_info.file_name << "^";
-    message_sstring << file_info.sha256sum << "^";
+
+    if(file_info.sha256sum.has_value())
+    {
+      message_sstring << file_info.sha256sum.value();
+    }
+
+    message_sstring << "^";
     message_sstring << std::to_string(file_info.size) << "^";
     message_sstring << std::to_string(port) << "^";
 

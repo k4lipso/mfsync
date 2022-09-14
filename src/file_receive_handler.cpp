@@ -147,10 +147,10 @@ void file_receive_handler::start_new_session()
 
 void file_receive_handler::add_to_request_queue(available_file file)
 {
-  const auto equal_shasum = [&file](const auto& request_file)
-     { return file.file_info.sha256sum == request_file.file_info.sha256sum; };
+  const auto equal_filename = [&file](const auto& request_file)
+     { return file.file_info.file_name == request_file.file_info.file_name; };
 
-  if(request_queue_.contains(equal_shasum))
+  if(request_queue_.contains(equal_filename))
   {
     return;
   }

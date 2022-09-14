@@ -165,8 +165,7 @@ void client_session_base<SocketType>::request_file()
   if(!output_file_stream.has_value())
   {
     spdlog::debug("file creation failed. abort session");
-    spdlog::debug("filename: {}, sha256sum: {}",
-                  requested_.file_info.file_name, requested_.file_info.sha256sum);
+    spdlog::debug("filename: {}", requested_.file_info.file_name);
     handle_error();
     return;
   }

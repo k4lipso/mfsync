@@ -189,8 +189,7 @@ void server_session_base<SocketType>::handle_read_confirmation(boost::system::er
   const auto file_size = ifstream_.tellg();
   ifstream_.seekg(requested_.offset, ifstream_.beg);
 
-  spdlog::debug("Start sending file: {}", requested_.file_info.file_name);
-  spdlog::debug("FileSize: {}, Sha256sum: {}", file_size, requested_.file_info.sha256sum);
+  spdlog::debug("Start sending file: {} with size: {}", requested_.file_info.file_name, file_size);
 
   if(bar_ == nullptr)
   {

@@ -155,7 +155,7 @@ namespace mfsync
 
     if(!can_be_stored(requested.file_info))
     {
-      spdlog::debug("file {} cant be stored. aborting file creation", requested.file_info.sha256sum);
+      spdlog::debug("file {} cant be stored. aborting file creation", requested.file_info.file_name);
       return std::nullopt;
     }
 
@@ -384,9 +384,8 @@ namespace mfsync
       }
 
       const std::string name = std::filesystem::relative(entry.path(), storage_path_).string();
-      if(std::any_of(stored_files_.begin(), stored_files_.end(),
-                     [&name](const auto& file_info)
-                     {  return name == file_info.file_name; }))
+
+      if(stored_files_.contains(name))
       {
         continue;
       }
@@ -442,9 +441,8 @@ namespace mfsync
 
     if(std::get<1>(result))
     {
-      spdlog::debug("adding file to storage: \"{}\" - {} - {}", (*std::get<0>(result)).sha256sum,
-                                                                (*std::get<0>(result)).file_name,
-                                                                (*std::get<0>(result)).size);
+      spdlog::debug("adding file to storage: {} - size: {}", (*std::get<0>(result)).file_name,
+                                                             (*std::get<0>(result)).size);
     }
   }
 

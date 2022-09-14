@@ -76,8 +76,6 @@ namespace progress
         }
     }
 
-    auto hash_name = sha256sum;
-    hash_name.resize(8);
     bar->set_option(option::PostfixText(message + file_name));
     bar->set_option(option::ForegroundColor(color));
 
@@ -152,8 +150,7 @@ progress_handler::file_progress_ptr progress_handler::create_file_progress(const
 {
   const auto compare_func = [&file_info](const auto& info)
   {
-    return file_info.file_name == info->file_name
-        && file_info.sha256sum == info->sha256sum;
+    return file_info.file_name == info->file_name;
   };
 
   std::unique_lock lk{mutex_};
