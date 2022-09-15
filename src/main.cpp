@@ -97,6 +97,10 @@ int main(int argc, char **argv)
   p.add("mode", 1);
   p.add("destination", 1);
 
+  try
+  {
+
+
   po::variables_map vm;
   po::store(po::command_line_parser(argc, argv).
           options(all_options).
@@ -286,9 +290,6 @@ int main(int argc, char **argv)
   std::vector<std::unique_ptr<mfsync::multicast::file_sender>> sender_vec;
   std::unique_ptr<mfsync::file_receive_handler> receiver = nullptr;
   std::unique_ptr<mfsync::filetransfer::server> file_server = nullptr;
-
-  try
-  {
 
   auto file_handler = mfsync::file_handler{};
   file_handler.set_progress(progress_handler.get());
