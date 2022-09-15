@@ -16,8 +16,10 @@ server::server(boost::asio::io_context &io_context, unsigned short port, mfsync:
 
 void server::run()
 {
-  start_listening(port_);
-  accept_connections();
+  if(start_listening(port_))
+  {
+    accept_connections();
+  }
 }
 
 std::string server::get_password() const
@@ -49,16 +51,26 @@ void server::enable_tls(const std::string& dh_file, const std::string& cert_file
   ctx.use_tmp_dh_file(dh_file);
 }
 
-void server::start_listening(uint16_t port)
+bool server::start_listening(uint16_t port)
 {
   spdlog::debug("setting up endpoint");
   boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::tcp::v4(), port);
   spdlog::debug("setting port to {}", port);
   acceptor_.open(endpoint.protocol());
   acceptor_.set_option(boost::asio::ip::tcp::acceptor::reuse_address(true));
-  acceptor_.bind(endpoint);
-  acceptor_.listen();
+  try
+  {
+    acceptor_.bind(endpoint);
+    acceptor_.listen();
+  }
+  catch (std::exception& e)
+  {
+    spdlog::info("Port {} already in use, mfsync will not be able to send files. Use '--port' to specify a different port", port);
+    return false;
+  }
+
   spdlog::debug("started listening");
+  return true;
 }
 
 void server::accept_connections()

@@ -25,7 +25,7 @@ public:
 
 private:
 
-  void start_listening(uint16_t port);
+  bool start_listening(uint16_t port);
   void accept_connections();
   void handle_new_connection(boost::asio::ip::tcp::socket socket, const boost::system::error_code &ec);
 
