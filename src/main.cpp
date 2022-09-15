@@ -145,7 +145,7 @@ int main(int argc, char **argv)
   else
   {
     progress_handler->start();
-    spdlog::set_pattern(std::string{mfsync::protocol::MFSYNC_LOG_PREFIX} + " %v");
+    spdlog::set_pattern(std::string{mfsync::protocol::MFSYNC_LOG_PREFIX} + "%v");
   }
 
   if(mode == operation_mode::NONE)
