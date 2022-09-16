@@ -100,7 +100,6 @@ int main(int argc, char **argv)
   try
   {
 
-
   po::variables_map vm;
   po::store(po::command_line_parser(argc, argv).
           options(all_options).
@@ -436,9 +435,9 @@ int main(int argc, char **argv)
   spdlog::debug("stopped...");
 
   }
-  catch (std::exception& e)
+  catch (po::error& e)
   {
-    std::cerr << "Exception: " << e.what() << "\n";
+    std::cout << e.what() << "\n";
   }
 
   return 0;
