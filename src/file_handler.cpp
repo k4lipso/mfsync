@@ -87,14 +87,14 @@ namespace mfsync
     }
   }
 
-  void file_handler::add_available_files(available_files available)
+  void file_handler::add_available_files(const available_files& available)
   {
     std::unique_lock lk{mutex_};
     bool changed = false;
 
     update_stored_files();
 
-    for(auto& avail : available)
+    for(const auto& avail : available)
     {
       if(stored_files_.contains(avail.file_info))
       {
