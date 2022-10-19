@@ -38,6 +38,7 @@ public:
 
 private:
 
+  void fill_request_queue();
   void start_new_session();
   void add_to_request_queue(available_file file);
   void wait();

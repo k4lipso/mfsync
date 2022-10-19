@@ -56,7 +56,7 @@ void file_receive_handler::get_files()
     return;
   }
 
-  auto availables = file_handler_.get_available_files();
+  const auto& availables = file_handler_.get_available_files();
 
   if(request_all_)
   {
@@ -76,17 +76,7 @@ void file_receive_handler::get_files()
     return;
   }
 
-  for(auto& sha256sum : files_to_request_)
-  {
-    auto it = availables.find(sha256sum);
-
-    if(it == availables.end())
-    {
-      continue;
-    }
-
-    add_to_request_queue(*it);
-  }
+  fill_request_queue();
 
   //clean files_to_request
   files_to_request_.erase(std::remove_if(files_to_request_.begin(), files_to_request_.end(),
@@ -100,6 +90,22 @@ void file_receive_handler::get_files()
 
   start_new_session();
   wait();
+}
+
+void file_receive_handler::fill_request_queue()
+{
+  const auto& availables = file_handler_.get_available_files();
+  for(const auto& sha256sum : files_to_request_)
+  {
+    for(const auto& available : availables)
+    {
+      //using starts_with to find matching filenames allows search for directorys
+      if(available.file_info.file_name.starts_with(sha256sum))
+      {
+        add_to_request_queue(available);
+      }
+    }
+  }
 }
 
 std::future<void> file_receive_handler::get_future()
