@@ -34,7 +34,7 @@ namespace progress
     {
       case STATUS::UPLOADING:
         {
-          color = Color::green;
+          color = Color::yellow;
           message = "uploading: ";
           break;
         }
@@ -52,7 +52,7 @@ namespace progress
         }
       case STATUS::DONE:
         {
-          color = Color::unspecified;
+          color = Color::green;
           message = "done: ";
           break;
         }
@@ -64,7 +64,7 @@ namespace progress
         }
       case STATUS::INITIALIZED:
         {
-          color = Color::unspecified;
+          color = Color::cyan;
           message = "initialized: ";
           break;
         }
