@@ -23,9 +23,14 @@ namespace mfsync
 
   bool file_handler::can_be_stored(const file_information& file_info) const
   {
-    static_cast<void>(file_info);
-    spdlog::debug("can_be_stored: function not implemented yet");
-    //TODO: check if enough space for storing
+    const auto space_info = std::filesystem::space(storage_path_);
+
+    if(space_info.available < file_info.size)
+    {
+      spdlog::error("Not enough space left on device.");
+      return false;
+    }
+
     return true;
   }
 
