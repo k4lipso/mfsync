@@ -244,6 +244,7 @@ void client_session_base<SocketType>::handle_read_file_request_response(boost::s
             me->bar_->status = progress::STATUS::DOWNLOADING;
           }
 
+          me->readbuf_.resize(me->requested_.chunksize);
           me->read_file_chunk();
         }
         else
@@ -262,7 +263,6 @@ void client_session_base<SocketType>::handle_read_file_request_response(boost::s
 template<typename SocketType>
 void client_session_base<SocketType>::read_file_chunk()
 {
-  readbuf_.resize(requested_.chunksize);
 
   auto bytes_left = requested_.file_info.size - bytes_written_to_requested_;
 
@@ -277,7 +277,7 @@ void client_session_base<SocketType>::read_file_chunk()
     bytes_left = requested_.chunksize;
   }
 
-  boost::asio::mutable_buffers_1 buf = boost::asio::buffer(&readbuf_[0], bytes_left);
+  boost::asio::mutable_buffers_1 buf = boost::asio::buffer(&readbuf_[0], requested_.chunksize);
   boost::asio::async_read(
     socket_,
     buf,

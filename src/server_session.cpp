@@ -197,6 +197,7 @@ void server_session_base<SocketType>::handle_read_confirmation(boost::system::er
     bar_->status = progress::STATUS::UPLOADING;
   }
 
+  writebuf_.resize(requested_.chunksize);
   write_file();
 }
 
@@ -208,10 +209,10 @@ void server_session_base<SocketType>::write_file()
     bar_->bytes_transferred = requested_.file_info.size;
     bar_->status = progress::STATUS::DONE;
     bar_ = nullptr;
+    spdlog::debug("Done snding file.");
     return;
   }
 
-  writebuf_.resize(requested_.chunksize);
   ifstream_.read(writebuf_.data(), writebuf_.size());
 
   bar_->bytes_transferred = ifstream_.tellg();
