@@ -239,12 +239,17 @@ namespace mfsync
     const auto tmp_path = get_tmp_path(file);
 
 
-    if(finalize_with_shasum && !file_information::compare_sha256sum(file, tmp_path))
+    if(finalize_with_shasum)
     {
-      return false;
+      if(!file_information::compare_sha256sum(file, tmp_path))
+      {
+        return false;
+      }
+
+      spdlog::debug("shasum256 of {} is correct.", file.file_name);
     }
 
-    spdlog::debug("shasum256 of {} is correct. adding file to storage.", file.file_name);
+    spdlog::debug("adding file to storage: {}", file.file_name);
     locked_files_.erase(std::remove_if(locked_files_.begin(), locked_files_.end(),
                         [&file](const auto& locked_file){ return file == locked_file.first; }),
                         locked_files_.end());
