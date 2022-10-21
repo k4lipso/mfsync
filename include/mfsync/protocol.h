@@ -3,6 +3,7 @@
 #include <vector>
 #include <optional>
 #include <string>
+#include <string_view>
 
 #include "mfsync/file_handler.h"
 
@@ -14,11 +15,16 @@ namespace mfsync::protocol
   constexpr auto MULTICAST_ADDRESS = "239.255.0.1";
   constexpr auto MAX_MESSAGE_SIZE = 1024;
   constexpr auto CHUNKSIZE = 1024;
+  constexpr auto MFSYNC_HEADER_BEGIN = "<MFSYNC_HEADER_BEGIN>";
   constexpr auto MFSYNC_HEADER_END = "<MFSYNC_HEADER_END>";
   constexpr auto MFSYNC_LOG_PREFIX = "";
   constexpr auto VERSION = "0.1.0";
 
-  std::string create_begin_transmission_message();
+  constexpr std::string_view create_begin_transmission_message()
+  {
+    return "<MFSYNC_HEADER_BEGIN>BEGIN_TRANSMISSION<MFSYNC_HEADER_END>";
+  }
+
   std::string create_error_message(const std::string& reason);
 
   std::string create_message_from_requested_file(const requested_file& file);

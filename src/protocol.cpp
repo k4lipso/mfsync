@@ -8,24 +8,19 @@
 namespace mfsync::protocol
 {
 
-std::string create_begin_transmission_message()
-{
-  return "<MFSYNC_HEADER_BEGIN>BEGIN_TRANSMISSION<MFSYNC_HEADER_END>";
-}
-
 std::string create_error_message(const std::string& reason)
 {
   std::stringstream message_sstring;
-  message_sstring << "<MFSYNC_HEADER_BEGIN>";
+  message_sstring << MFSYNC_HEADER_BEGIN;
   message_sstring << reason;
-  message_sstring << "<MFSYNC_HEADER_END>";
+  message_sstring << MFSYNC_HEADER_BEGIN;
   return message_sstring.str();
 }
 
 std::string create_message_from_requested_file(const requested_file& file)
 {
   std::stringstream message_sstring;
-  message_sstring << "<MFSYNC_HEADER_BEGIN>^";
+  message_sstring << MFSYNC_HEADER_BEGIN << "^";
   message_sstring << file.file_info.file_name << "^";
 
   if(file.file_info.sha256sum.has_value())
@@ -37,7 +32,7 @@ std::string create_message_from_requested_file(const requested_file& file)
   message_sstring << std::to_string(file.file_info.size) << "^";
   message_sstring << std::to_string(file.offset) << "^";
   message_sstring << std::to_string(file.chunksize) << "^";
-  message_sstring << "<MFSYNC_HEADER_END>";
+  message_sstring << MFSYNC_HEADER_END;
   return message_sstring.str();
 }
 
