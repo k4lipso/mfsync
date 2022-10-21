@@ -277,7 +277,7 @@ void client_session_base<SocketType>::read_file_chunk()
     bytes_left = requested_.chunksize;
   }
 
-  boost::asio::mutable_buffers_1 buf = boost::asio::buffer(&readbuf_[0], requested_.chunksize);
+  boost::asio::mutable_buffers_1 buf = boost::asio::buffer(&readbuf_[0], bytes_left);
   boost::asio::async_read(
     socket_,
     buf,
