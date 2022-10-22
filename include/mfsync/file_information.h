@@ -5,6 +5,7 @@
 #include <utility>
 
 #include <boost/asio.hpp>
+#include <nlohmann/json.hpp>
 
 namespace mfsync
 {
@@ -41,6 +42,39 @@ namespace mfsync
     size_t offset = 0;
     unsigned chunksize = 0;
   };
+
+  inline void to_json(nlohmann::json& j, const file_information& file_info) {
+    j = nlohmann::json{{"file_name", file_info.file_name},
+             {"size", file_info.size}};
+
+    if(file_info.sha256sum.has_value())
+    {
+      j["sha256sum"] = file_info.sha256sum.value();
+    }
+  }
+
+  inline void from_json(const nlohmann::json& j, file_information& file_info) {
+    j.at("file_name").get_to(file_info.file_name);
+    j.at("size").get_to(file_info.size);
+
+    if(j.contains("sha256sum"))
+    {
+      j.at("sha256sum").get_to(file_info.sha256sum);
+    }
+  }
+
+  inline void to_json(nlohmann::json& j, const requested_file& requested_file) {
+    j = nlohmann::json{{"offset", requested_file.offset},
+             {"chunksize", requested_file.chunksize}};
+
+    j["file_info"] = requested_file.file_info;
+  }
+
+  inline void from_json(const nlohmann::json& j, requested_file& requested_file) {
+    j.at("offset").get_to(requested_file.offset);
+    j.at("chunksize").get_to(requested_file.chunksize);
+    requested_file.file_info = j.at("file_info").get<file_information>();
+  }
 
   inline bool operator<(const file_information& file_info, const std::string& file_name)
   {

@@ -15,8 +15,9 @@ namespace mfsync::protocol
   constexpr auto MULTICAST_ADDRESS = "239.255.0.1";
   constexpr auto MAX_MESSAGE_SIZE = 1024;
   constexpr auto CHUNKSIZE = 1024;
-  constexpr auto MFSYNC_HEADER_BEGIN = "<MFSYNC_HEADER_BEGIN>";
-  constexpr auto MFSYNC_HEADER_END = "<MFSYNC_HEADER_END>";
+  constexpr std::string_view MFSYNC_HEADER_BEGIN = "<MFSYNC_HEADER_BEGIN>";
+  constexpr std::string_view MFSYNC_HEADER_END = "<MFSYNC_HEADER_END>";
+  constexpr auto MFSYNC_HEADER_SIZE = MFSYNC_HEADER_BEGIN.size() + MFSYNC_HEADER_END.size();
   constexpr auto MFSYNC_LOG_PREFIX = "";
   constexpr auto VERSION = "0.1.0";
 
