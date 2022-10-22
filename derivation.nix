@@ -9,7 +9,17 @@ stdenv.mkDerivation {
 
   nativeBuildInputs = [ pkgs.pkgconfig pkgs.cmake pkgs.gnumake ];
   depsBuildBuild = [ ];
-  buildInputs = [ libindicators pkgs.catch2 pkgs.spdlog pkgs.openssl boost pkgs.boost-build pkgs.doxygen pkgs.catch2 ];
+  buildInputs = [
+    libindicators
+    pkgs.catch2
+    pkgs.spdlog
+    pkgs.openssl
+    boost
+    pkgs.boost-build
+    pkgs.doxygen
+    pkgs.catch2
+    pkgs.nlohmann_json
+  ];
 
   cmakeFlags = [
     "-DBUILD_STATIC=On"
