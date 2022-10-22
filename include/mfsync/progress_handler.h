@@ -47,7 +47,7 @@ namespace progress
     bool update_progress();
 
     std::atomic<STATUS> old_status = STATUS::UNKNOWN;
-    std::atomic<size_t> old_bytes_transferred = 1;
+    std::atomic<size_t> old_bytes_transferred = -1;
   };
 
 }
