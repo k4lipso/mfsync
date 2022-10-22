@@ -81,6 +81,13 @@ namespace mfsync
     available.file_info = j.get<file_information>();
   }
 
+  inline bool operator==(const requested_file& lhs, const requested_file& rhs)
+  {
+    return lhs.file_info == rhs.file_info
+        && lhs.chunksize == rhs.chunksize
+        && lhs.offset == rhs.offset;
+  }
+
   inline bool operator<(const file_information& file_info, const std::string& file_name)
   {
     return file_info.file_name < file_name;
