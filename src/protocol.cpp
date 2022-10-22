@@ -108,7 +108,7 @@ get_available_files_from_message(const std::string& message,
     {
       available_file av = available.get<available_file>();
       av.source_address = endpoint.address();
-      result.insert(available);
+      result.insert(av);
     }
 
     return result;

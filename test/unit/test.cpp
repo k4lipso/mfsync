@@ -103,6 +103,27 @@ TEST_CASE("single message serialization", "[protocol") {
   }
 }
 
+TEST_CASE("bug: source addr not copied", "[protocol") {
+  mfsync::file_handler::stored_files files;
+  mfsync::file_information info{ "test_file", std::nullopt, 9000};
+  files.insert(info);
+
+  auto address = boost::asio::ip::address::from_string("12.34.56.78");
+  auto port = 2342;
+  const auto result = mfsync::protocol::create_messages_from_file_info(files, port);
+
+  boost::asio::ip::udp::endpoint endpoint(address, port);
+  for(const auto& msg : result)
+  {
+    const auto availables_from_result = mfsync::protocol::get_available_files_from_message(msg, endpoint);
+    for(const auto& available : availables_from_result.value())
+    {
+      REQUIRE(available.source_address == endpoint.address());
+    }
+  }
+
+}
+
 TEST_CASE("multi message serialization", "[protocol]") {
   mfsync::file_handler::stored_files files;
 
