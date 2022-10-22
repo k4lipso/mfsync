@@ -41,18 +41,16 @@ std::optional<requested_file> get_requested_file_from_message(const std::string&
   view.remove_prefix(MFSYNC_HEADER_BEGIN.size());
   view.remove_suffix(view.size() - view.find(MFSYNC_HEADER_END));
 
-  nlohmann::json j;
   try
   {
-    j = nlohmann::json::parse(view);
+    auto j = nlohmann::json::parse(view);
+    return j.get<requested_file>();
   }
-  catch(nlohmann::json::parse_error& er)
+  catch(std::exception& er)
   {
-    spdlog::debug("Json Parse Error: {}", er.what());
+    spdlog::debug("Json Error: {}", er.what());
     return std::nullopt;
   }
-
-  return j.get<requested_file>();
 }
 
 std::vector<std::string> create_messages_from_file_info(const file_handler::stored_files& file_infos,
@@ -101,26 +99,25 @@ get_available_files_from_message(const std::string& message,
     return std::nullopt;
   }
 
-  nlohmann::json j;
   try
   {
-    j = nlohmann::json::parse(message);
+    const auto j = nlohmann::json::parse(message);
+
+    file_handler::available_files result;
+    for(const auto& available : j)
+    {
+      available_file av = available.get<available_file>();
+      av.source_address = endpoint.address();
+      result.insert(available);
+    }
+
+    return result;
   }
   catch(nlohmann::json::parse_error& er)
   {
     spdlog::debug("Json Parse Error: {}", er.what());
     return std::nullopt;
   }
-
-  file_handler::available_files result;
-  for(const auto& available : j)
-  {
-    available_file av = available.get<available_file>();
-    av.source_address = endpoint.address();
-    result.insert(available);
-  }
-
-  return result;
 }
 
 }
