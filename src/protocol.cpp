@@ -121,35 +121,6 @@ get_available_files_from_message(const std::string& message,
   }
 
   return result;
-  //std::string tmp;
-  //std::stringstream message_sstring{message};
-  //std::vector<std::string> tokens;
-
-  //while(std::getline(message_sstring, tmp, '^'))
-  //{
-  //  tokens.push_back(tmp);
-  //}
-
-  //if(tokens.size() % 4 != 0)
-  //{
-  //  spdlog::error("could not generate file_information out of message");
-  //  return std::nullopt;
-  //}
-
-  //file_handler::available_files result;
-
-  //for(unsigned i = 0; i < tokens.size(); i += 4)
-  //{
-  //  available_file available;
-  //  available.file_info.file_name = tokens.at(i);
-  //  available.file_info.sha256sum = tokens.at(i + 1);
-  //  available.file_info.size = std::stoull(tokens.at(i + 2));
-  //  available.source_address = endpoint.address();
-  //  available.source_port = std::stoi(tokens.at(i + 3));
-  //  result.insert(available);
-  //}
-
-  //return result;
 }
 
 }
