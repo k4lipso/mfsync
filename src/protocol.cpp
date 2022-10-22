@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <sstream>
+#include <nlohmann/json.hpp>
 
 #include "spdlog/spdlog.h"
 
@@ -19,54 +20,39 @@ std::string create_error_message(const std::string& reason)
 
 std::string create_message_from_requested_file(const requested_file& file)
 {
+  nlohmann::json j = file;
+
   std::stringstream message_sstring;
-  message_sstring << MFSYNC_HEADER_BEGIN << "^";
-  message_sstring << file.file_info.file_name << "^";
-
-  if(file.file_info.sha256sum.has_value())
-  {
-    message_sstring << file.file_info.sha256sum.value();
-  }
-
-  message_sstring << "^";
-  message_sstring << std::to_string(file.file_info.size) << "^";
-  message_sstring << std::to_string(file.offset) << "^";
-  message_sstring << std::to_string(file.chunksize) << "^";
+  message_sstring << MFSYNC_HEADER_BEGIN;
+  message_sstring << j.dump();
   message_sstring << MFSYNC_HEADER_END;
   return message_sstring.str();
 }
 
 std::optional<requested_file> get_requested_file_from_message(const std::string& message)
 {
-  if(message.empty())
+  if(message.size() < MFSYNC_HEADER_SIZE)
   {
     spdlog::debug("get_requested_file_from_message on empty message");
     return std::nullopt;
   }
 
-  std::string tmp;
-  std::stringstream message_sstring{message};
-  std::vector<std::string> tokens;
+  std::string_view view{message};
+  view.remove_prefix(MFSYNC_HEADER_BEGIN.size());
+  view.remove_suffix(view.size() - view.find(MFSYNC_HEADER_END));
 
-  while(std::getline(message_sstring, tmp, '^'))
+  nlohmann::json j;
+  try
   {
-    tokens.push_back(tmp);
+    j = nlohmann::json::parse(view);
   }
-
-  if(tokens.size() != 7)
+  catch(nlohmann::json::parse_error& er)
   {
-    spdlog::error("could not generate requested_file out of message");
+    spdlog::debug("Json Parse Error: {}", er.what());
     return std::nullopt;
   }
 
-  requested_file file;
-  file.file_info.file_name = tokens.at(1);
-  file.file_info.sha256sum = tokens.at(2);
-  file.file_info.size = std::stoull(tokens.at(3));
-  file.offset = std::stoull(tokens.at(4));
-  file.chunksize = std::stoi(tokens.at(5));
-
-  return file;
+  return j.get<requested_file>();
 }
 
 std::vector<std::string> create_messages_from_file_info(const file_handler::stored_files& file_infos,
@@ -75,36 +61,33 @@ std::vector<std::string> create_messages_from_file_info(const file_handler::stor
   std::string message_string;
   std::vector<std::string> result;
 
+  nlohmann::json json_array = nlohmann::json::array();
+  nlohmann::json element;
   for(const auto& file_info : file_infos)
   {
-    std::stringstream message_sstring;
-    message_sstring << file_info.file_name << "^";
-
-    if(file_info.sha256sum.has_value())
+    element = file_info;
+    element["port"] = port;
+    nlohmann::json tmp_size_check = json_array;
+    tmp_size_check.push_back(element);
+    if(tmp_size_check.dump().size() > MAX_MESSAGE_SIZE)
     {
-      message_sstring << file_info.sha256sum.value();
+      result.push_back(json_array.dump());
+      json_array.clear();
+      json_array.push_back(element);
+    }
+    else
+    {
+      json_array = std::move(tmp_size_check);
     }
 
-    message_sstring << "^";
-    message_sstring << std::to_string(file_info.size) << "^";
-    message_sstring << std::to_string(port) << "^";
-
-    message_sstring.seekg(0, std::ios::end);
-    auto message_sstring_size = message_sstring.tellg();
-
-    if(message_string.size() + message_sstring_size > MAX_MESSAGE_SIZE)
-    {
-      result.push_back(message_string);
-      message_string.clear();
-    }
-
-    message_string += message_sstring.str();
+    element.clear();
   }
 
-  if(!message_string.empty())
+  if(!json_array.empty())
   {
-    result.push_back(message_string);
+    result.push_back(json_array.dump());
   }
+
   return result;
 }
 
@@ -118,35 +101,55 @@ get_available_files_from_message(const std::string& message,
     return std::nullopt;
   }
 
-  std::string tmp;
-  std::stringstream message_sstring{message};
-  std::vector<std::string> tokens;
-
-  while(std::getline(message_sstring, tmp, '^'))
+  nlohmann::json j;
+  try
   {
-    tokens.push_back(tmp);
+    j = nlohmann::json::parse(message);
   }
-
-  if(tokens.size() % 4 != 0)
+  catch(nlohmann::json::parse_error& er)
   {
-    spdlog::error("could not generate file_information out of message");
+    spdlog::debug("Json Parse Error: {}", er.what());
     return std::nullopt;
   }
 
   file_handler::available_files result;
-
-  for(unsigned i = 0; i < tokens.size(); i += 4)
+  for(const auto& available : j)
   {
-    available_file available;
-    available.file_info.file_name = tokens.at(i);
-    available.file_info.sha256sum = tokens.at(i + 1);
-    available.file_info.size = std::stoull(tokens.at(i + 2));
-    available.source_address = endpoint.address();
-    available.source_port = std::stoi(tokens.at(i + 3));
+    available_file av = available.get<available_file>();
+    av.source_address = endpoint.address();
     result.insert(available);
   }
 
   return result;
+  //std::string tmp;
+  //std::stringstream message_sstring{message};
+  //std::vector<std::string> tokens;
+
+  //while(std::getline(message_sstring, tmp, '^'))
+  //{
+  //  tokens.push_back(tmp);
+  //}
+
+  //if(tokens.size() % 4 != 0)
+  //{
+  //  spdlog::error("could not generate file_information out of message");
+  //  return std::nullopt;
+  //}
+
+  //file_handler::available_files result;
+
+  //for(unsigned i = 0; i < tokens.size(); i += 4)
+  //{
+  //  available_file available;
+  //  available.file_info.file_name = tokens.at(i);
+  //  available.file_info.sha256sum = tokens.at(i + 1);
+  //  available.file_info.size = std::stoull(tokens.at(i + 2));
+  //  available.source_address = endpoint.address();
+  //  available.source_port = std::stoi(tokens.at(i + 3));
+  //  result.insert(available);
+  //}
+
+  //return result;
 }
 
 }
