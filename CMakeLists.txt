@@ -77,6 +77,7 @@ if(USE_SUBMODULES)
     libindicators
     GIT_REPOSITORY https://github.com/p-ranav/indicators
     GIT_TAG        a5bc05f32a9c719535054b7fa5306ce5c8d055d8
+    GIT_SHALLOW TRUE
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
     INSTALL_COMMAND ""
@@ -84,10 +85,26 @@ if(USE_SUBMODULES)
   )
 
   FetchContent_MakeAvailable(libindicators)
-
   target_include_directories(libmfsync
     PUBLIC
       "${libindicators_SOURCE_DIR}/include"
+  )
+
+  FetchContent_Declare(
+    libnlohmann-json
+    GIT_REPOSITORY https://github.com/nlohmann/json
+    GIT_TAG        4f8fba14066156b73f1189a2b8bd568bde5284c5
+    GIT_SHALLOW TRUE
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
+    GIT_PROGRESS TRUE
+  )
+
+  FetchContent_MakeAvailable(libnlohmann-json)
+  target_include_directories(libmfsync
+    PUBLIC
+      "${libnlohmann-json_SOURCE_DIR}/include"
   )
 endif()
 
