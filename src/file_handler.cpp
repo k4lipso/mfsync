@@ -45,7 +45,7 @@ namespace mfsync
     std::scoped_lock lk{mutex_};
     return std::any_of(stored_files_.begin(), stored_files_.end(), [&sha256sum](const auto& file_info)
     {
-      return file_info.sha256sum == sha256sum;
+      return file_info.file_name == sha256sum;
     });
   }
 
