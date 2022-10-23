@@ -83,8 +83,10 @@ void file_receive_handler::get_files()
                       [this](const auto& sha256sum){ return file_handler_.is_stored(sha256sum); }),
                       files_to_request_.end());
 
-  if(files_to_request_.empty())
+  static bool promise_is_set = false;
+  if(files_to_request_.empty() && !promise_is_set)
   {
+    promise_is_set = true;
     promise_.set_value();
   }
 
