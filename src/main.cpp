@@ -68,8 +68,6 @@ int main(int argc, char **argv)
     ("verbose,v", "Show debug logs")
     ("version", "print version")
     ("trace,t", "Show sent and received multicast messages")
-    ("request,r", po::value<std::vector<std::string>>()->multitoken()->zero_tokens(),
-       "try download the files with the given hash. if no hash is give all available files are downloaded")
     ("port,p", po::value<unsigned short>(), "Manual specify tcp port to listen on. If not specified using default port 8000")
     ("concurrent_downloads,c", po::value<size_t>(), "maximum concurrent downloads allowed. default is 3")
     ("multicast-address", po::value<std::string>(), "Manual specify multicast address. If not specified 239.255.0.1 is used as default")
@@ -86,7 +84,7 @@ int main(int argc, char **argv)
   po::options_description hidden;
   hidden.add_options()
       ("mode", po::value<std::string>(), "operation mode")
-      ("destination", po::value<std::string>(), "path to destination")
+      ("destination", po::value<std::vector<std::string>>()->multitoken(), "path to destination")
       ;
 
   po::options_description all_options;
@@ -95,7 +93,7 @@ int main(int argc, char **argv)
 
   po::positional_options_description p;
   p.add("mode", 1);
-  p.add("destination", 1);
+  p.add("destination", -1);
 
   try
   {
@@ -259,9 +257,12 @@ int main(int argc, char **argv)
   }
 
   std::string destination_path;
+  std::vector<std::string> target_files{};
   if(vm.count("destination"))
   {
-    destination_path = vm["destination"].as<std::string>();
+    target_files = vm["destination"].as<std::vector<std::string>>();
+    destination_path = target_files.back();
+    target_files.pop_back();
   }
 
   std::string client_tls_path;
@@ -355,14 +356,6 @@ int main(int argc, char **argv)
 
   if(mode != operation_mode::SHARE && mode != operation_mode::FETCH)
   {
-    std::vector<std::string> file_hashes{};
-
-    if(vm.count("request"))
-    {
-      file_hashes = vm["request"].as<std::vector<std::string>>();
-    }
-
-
     size_t concurrent_downloads = 3;
     if(vm.count("concurrent_downloads"))
     {
@@ -372,9 +365,9 @@ int main(int argc, char **argv)
     receiver = std::make_unique<mfsync::file_receive_handler>(io_service, file_handler,
                                                               concurrent_downloads, progress_handler.get());
 
-    if(!file_hashes.empty())
+    if(!target_files.empty())
     {
-      receiver->set_files(std::move(file_hashes));
+      receiver->set_files(std::move(target_files));
     }
 
     if(!client_tls_path.empty())
@@ -435,7 +428,7 @@ int main(int argc, char **argv)
   spdlog::debug("stopped...");
 
   }
-  catch (po::error& e)
+  catch (std::exception& e)
   {
     std::cout << e.what() << "\n";
   }
