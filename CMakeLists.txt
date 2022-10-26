@@ -25,6 +25,7 @@ message("Compile Opts: ${COMPILE_OPTIONS}")
 
 find_package(Threads REQUIRED)
 find_package(OpenSSL MODULE REQUIRED COMPONENTS SSL Crypto EXACT)
+find_package(CryptoPP REQUIRED)
 
 if(NOT TARGET spdlog)
   find_package(spdlog REQUIRED)
@@ -51,6 +52,7 @@ set(LIBMFSYNC_FILES
   src/client_session.cpp
   src/server.cpp
   src/progress_handler.cpp
+  src/crypto.cpp
   )
 
 if(BUILD_STATIC)
@@ -67,6 +69,7 @@ target_include_directories(libmfsync
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     ${OPENSSL_INCLUDE_DIR}
+    ${CRYPTOPP_INCLUDE_DIR}
 )
 
 
@@ -115,6 +118,7 @@ target_link_libraries(libmfsync
     OpenSSL::SSL
     OpenSSL::Crypto
     spdlog::spdlog
+    ${CRYPTOPP_LIBRARIES}
 )
 
 add_executable(mfsync
