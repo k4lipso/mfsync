@@ -7,5 +7,16 @@ stdenv.mkDerivation {
 
   nativeBuildInputs = [ pkgconfig cmake gnumake gdb clang clang-tools ];
   depsBuildBuild = [ ];
-  buildInputs = [ libindicators catch2 spdlog openssl boost boost-build doxygen catch2 nlohmann_json ];
+  buildInputs = [
+    libindicators
+    catch2
+    spdlog
+    openssl
+    boost
+    boost-build
+    doxygen
+    catch2
+    nlohmann_json
+    cryptopp
+  ];
 }

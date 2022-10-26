@@ -19,6 +19,7 @@ stdenv.mkDerivation {
     pkgs.doxygen
     pkgs.catch2
     pkgs.nlohmann_json
+    pkgs.cryptopp
   ];
 
   cmakeFlags = [
