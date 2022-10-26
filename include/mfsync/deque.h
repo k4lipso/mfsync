@@ -66,6 +66,12 @@ public:
     return deque_.empty();
   }
 
+  size_t size() const
+  {
+    std::scoped_lock lk(mutex_);
+    return deque_.size();
+  }
+
   void push_back(T new_value)
   {
     std::scoped_lock lk(mutex_);

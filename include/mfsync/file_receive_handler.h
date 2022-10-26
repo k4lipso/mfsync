@@ -36,9 +36,11 @@ public:
 
   void enable_tls(const std::string& cert_file);
 
+protected:
+  void fill_request_queue();
+  mfsync::concurrent::deque<available_file> request_queue_;
 private:
 
-  void fill_request_queue();
   void start_new_session();
   void add_to_request_queue(available_file file);
   void wait();
@@ -48,7 +50,6 @@ private:
   boost::asio::deadline_timer timer_;
   mfsync::file_handler& file_handler_;
   std::vector<std::string> files_to_request_;
-  mfsync::concurrent::deque<available_file> request_queue_;
   std::optional<boost::asio::ssl::context> ctx_;
   bool request_all_;
   std::vector<std::weak_ptr<mfsync::filetransfer::session_base>> sessions_;

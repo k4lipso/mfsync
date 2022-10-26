@@ -4,6 +4,7 @@
 
 #include "mfsync/file_handler.h"
 #include "mfsync/protocol.h"
+#include "mfsync/file_receive_handler.h"
 
 TEST_CASE("storage test", "[file_handler]") {
     auto handler = mfsync::file_handler();
@@ -147,4 +148,48 @@ TEST_CASE("multi message serialization", "[protocol]") {
       REQUIRE(available.source_port == 2342);
     }
   }
+}
+
+TEST_CASE("request files by directory test", "[file_receive_handler]") {
+  class file_receive_handler_test : public mfsync::file_receive_handler
+  {
+  public:
+    using file_receive_handler::file_receive_handler;
+
+    size_t fill_request_queue_test()
+    {
+      file_receive_handler::fill_request_queue();
+      return request_queue_.size();
+    }
+  };
+
+  auto file_handler = mfsync::file_handler();
+
+  //first create and add some available files:
+  mfsync::file_handler::available_files availables{{
+    { .file_info = { .file_name = "test1.txt" }, .source_address = {} },
+    { .file_info = { .file_name = "test2.txt" }, .source_address = {} },
+    { .file_info = { .file_name = "folder1/test2.txt" }, .source_address = {} },
+    { .file_info = { .file_name = "folder2/test2.txt" }, .source_address = {} },
+    { .file_info = { .file_name = "folder2/test3.txt" }, .source_address = {} },
+    { .file_info = { .file_name = "folder2/test4.txt" }, .source_address = {} },
+    { .file_info = { .file_name = "folder1/subfolder1/test1.txt" }, .source_address = {} },
+    { .file_info = { .file_name = "folder1/subfolder2/test1.txt" }, .source_address = {} },
+    { .file_info = { .file_name = "folder1/subfolder2/test2.txt" }, .source_address = {} },
+    { .file_info = { .file_name = "folder1/subfolder2/test3.txt" }, .source_address = {} }
+  }};
+
+  file_handler.add_available_files(std::move(availables));
+
+  boost::asio::io_context ctx;
+  file_receive_handler_test receive_handler{ctx, file_handler, 1, nullptr};
+
+  //second create files that should be requested:
+  std::vector<std::string> files_to_request{{
+      "folder1/subfolder2"
+  }};
+
+  receive_handler.set_files(files_to_request);
+  const auto request_queue_size = receive_handler.fill_request_queue_test();
+  REQUIRE(request_queue_size == 3);
 }
