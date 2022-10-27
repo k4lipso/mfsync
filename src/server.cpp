@@ -8,10 +8,14 @@
 
 namespace mfsync::filetransfer
 {
-server::server(boost::asio::io_context &io_context, unsigned short port, mfsync::file_handler& file_handler)
+server::server(boost::asio::io_context &io_context,
+               unsigned short port,
+               mfsync::file_handler& file_handler,
+               mfsync::crypto::crypto_handler& crypto_handler)
   : acceptor_(io_context)
   , port_(port)
   , file_handler_(file_handler)
+  , crypto_handler_(crypto_handler)
 {}
 
 void server::run()
@@ -96,13 +100,13 @@ void server::handle_new_connection(boost::asio::ip::tcp::socket socket,
   if(ssl_context_.has_value())
   {
     auto handler = std::make_shared<mfsync::filetransfer::server_tls_session>(
-      boost::asio::ssl::stream<boost::asio::ip::tcp::socket>(std::move(socket), ssl_context_.value()), file_handler_);
+      boost::asio::ssl::stream<boost::asio::ip::tcp::socket>(std::move(socket), ssl_context_.value()), file_handler_, crypto_handler_);
     handler->set_progress(progress_);
     handler->start();
   }
   else
   {
-    auto handler = std::make_shared<mfsync::filetransfer::server_session>(std::move(socket), file_handler_);
+    auto handler = std::make_shared<mfsync::filetransfer::server_session>(std::move(socket), file_handler_, crypto_handler_);
     handler->set_progress(progress_);
     handler->start();
   }

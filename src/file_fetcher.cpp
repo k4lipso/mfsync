@@ -1,5 +1,6 @@
 #include "mfsync/file_fetcher.h"
 
+#include "mfsync/client_session.h"
 #include "mfsync/protocol.h"
 
 namespace mfsync::multicast
@@ -9,9 +10,12 @@ namespace mfsync::multicast
                              const boost::asio::ip::address& listen_address,
                              const boost::asio::ip::address& multicast_address,
                              const short multicast_port,
-                             mfsync::file_handler* file_handler)
-    : socket_(io_service)
+                             mfsync::file_handler* file_handler,
+                             mfsync::crypto::crypto_handler& crypto_handler)
+    : io_context_(io_service)
+    , socket_(io_service)
     , file_handler_(file_handler)
+    , crypto_handler_(crypto_handler)
   {
     boost::asio::ip::udp::endpoint listen_endpoint(
         listen_address, multicast_port);
@@ -38,12 +42,27 @@ namespace mfsync::multicast
       spdlog::trace("Received Message: '{}'", std::string(data_, bytes_recvd));
       spdlog::trace("From: {}", boost::lexical_cast<std::string>(sender_endpoint_.address()));
 
-      auto available = mfsync::protocol::get_available_files_from_message(std::string(data_, bytes_recvd),
+
+      auto host_info = mfsync::protocol::get_host_info_from_message(std::string(data_, bytes_recvd),
                                                                     sender_endpoint_);
 
-      if(available.has_value())
+      if(host_info.has_value())
       {
-        file_handler_->add_available_files(std::move(available.value()));
+        spdlog::debug("received host info, ip: {}, port: {}, pubkey: {}",
+                      host_info.value().ip,
+                      host_info.value().port,
+                      host_info.value().public_key);
+      }
+
+      if(crypto_handler_.trust_key(host_info.value().public_key))
+      {
+        const auto session =
+            std::make_shared<mfsync::filetransfer::client_encrypted_file_list>(
+              io_context_,
+              *file_handler_,
+              crypto_handler_,
+              host_info.value());
+        session->start_request();
       }
 
       socket_.async_receive_from(boost::asio::buffer(data_, max_length), sender_endpoint_,

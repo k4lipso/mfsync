@@ -65,27 +65,27 @@ TEST_CASE("broken single message deserialization", "[protocol") {
 }
 
 TEST_CASE("broken multi message deserialization") {
-  const auto empty = mfsync::protocol::get_available_files_from_message("", {});
+  const auto empty = mfsync::protocol::get_available_files_from_message("");
   REQUIRE(!empty.has_value());
 
   const auto msg = std::string(mfsync::protocol::MFSYNC_HEADER_BEGIN)
                  + std::string(mfsync::protocol::MFSYNC_HEADER_END);
   const auto empty2 =
-      mfsync::protocol::get_available_files_from_message(msg, {});
+      mfsync::protocol::get_available_files_from_message(msg);
   REQUIRE(!empty2.has_value());
 
   const auto msg2 = std::string(mfsync::protocol::MFSYNC_HEADER_BEGIN)
                   + std::string("{}")
                   + std::string(mfsync::protocol::MFSYNC_HEADER_END);
   const auto empty3 =
-      mfsync::protocol::get_available_files_from_message(msg2, {});
+      mfsync::protocol::get_available_files_from_message(msg2);
   REQUIRE(!empty3.has_value());
 
   const auto msg3 = std::string(mfsync::protocol::MFSYNC_HEADER_BEGIN)
                   + std::string("{ \"foo\": \"bar\", \"baz\": 23 }")
                   + std::string(mfsync::protocol::MFSYNC_HEADER_END);
   const auto empty4 =
-      mfsync::protocol::get_available_files_from_message(msg3, {});
+      mfsync::protocol::get_available_files_from_message(msg3);
   REQUIRE(!empty4.has_value());
 }
 
@@ -139,7 +139,7 @@ TEST_CASE("multi message serialization", "[protocol]") {
 
   for(const auto& msg : result)
   {
-    const auto availables_from_result = mfsync::protocol::get_available_files_from_message(msg, {});
+    const auto availables_from_result = mfsync::protocol::get_available_files_from_message(msg);
     REQUIRE(availables_from_result.has_value());
 
     for(const auto& available : availables_from_result.value())

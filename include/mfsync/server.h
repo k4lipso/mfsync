@@ -5,6 +5,7 @@
 #include "mfsync/file_handler.h"
 #include "mfsync/server_session.h"
 #include "mfsync/client_session.h"
+#include "mfsync/crypto.h"
 
 namespace mfsync::filetransfer
 {
@@ -12,7 +13,10 @@ namespace mfsync::filetransfer
 class server
 {
 public:
-  server(boost::asio::io_context &io_context, unsigned short port, mfsync::file_handler& file_handler);
+  server(boost::asio::io_context &io_context,
+         unsigned short port,
+         mfsync::file_handler& file_handler,
+         mfsync::crypto::crypto_handler& crypto_handler);
 
   void run();
   void stop();
@@ -36,6 +40,7 @@ private:
 
   unsigned short port_;
   mfsync::file_handler& file_handler_;
+  mfsync::crypto::crypto_handler& crypto_handler_;
   mfsync::filetransfer::progress_handler* progress_;
 };
 

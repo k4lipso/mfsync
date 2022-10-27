@@ -21,7 +21,8 @@ namespace mfsync::multicast
                 const boost::asio::ip::address& multicast_address,
                 short multicast_port,
                 unsigned short tcp_port,
-                file_handler& filehandler);
+                file_handler& filehandler,
+                std::string pub_key);
 
     void init();
     void set_outbound_interface(const boost::asio::ip::address_v4& address);
@@ -33,6 +34,7 @@ namespace mfsync::multicast
     boost::asio::ip::udp::socket socket_;
     boost::asio::deadline_timer timer_;
     std::string message_;
+    std::string public_key_;
     unsigned short port_;
     file_handler& file_handler_;
   };

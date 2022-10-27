@@ -11,6 +11,7 @@
 #include "mfsync/file_handler.h"
 #include "mfsync/deque.h"
 #include "mfsync/progress_handler.h"
+#include "mfsync/crypto.h"
 
 namespace mfsync::filetransfer
 {
@@ -29,6 +30,49 @@ public:
 
 protected:
   progress_handler* progress_ = nullptr;
+};
+
+template<typename SocketType>
+class client_encrypted_session
+    : public session_base,
+      public std::enable_shared_from_this<client_encrypted_session<SocketType>>
+{
+public:
+  client_encrypted_session() = delete;
+  client_encrypted_session(boost::asio::io_context& context,
+                           SocketType socket,
+                           mfsync::file_handler& handler,
+                           mfsync::crypto::crypto_handler& crypto_handler,
+                           mfsync::host_information host_info);
+  virtual ~client_encrypted_session() = default;
+
+  void initialize_communication();
+  void read_encrypted_response();
+  void handle_read_encrypted_response(boost::system::error_code const &error, std::size_t bytes_transferred);
+  void request_file_list();
+
+protected:
+  boost::asio::io_context& io_context_;
+  SocketType socket_;
+  mfsync::file_handler& file_handler_;
+  mfsync::crypto::crypto_handler& crypto_handler_;
+  mfsync::host_information host_info_;
+  std::string message_;
+  boost::asio::streambuf stream_buffer_;
+  std::vector<uint8_t> readbuf_;
+};
+
+class client_encrypted_file_list : public client_encrypted_session<boost::asio::ip::tcp::socket>
+{
+public:
+  client_encrypted_file_list() = delete;
+  client_encrypted_file_list(boost::asio::io_context& context,
+                             mfsync::file_handler& handler,
+                             mfsync::crypto::crypto_handler& crypto_handler,
+                             mfsync::host_information host_info);
+  virtual ~client_encrypted_file_list() = default;
+
+  virtual void start_request() override;
 };
 
 template<typename SocketType>

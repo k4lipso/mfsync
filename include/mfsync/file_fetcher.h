@@ -7,6 +7,7 @@
 #include "boost/lexical_cast.hpp"
 
 #include "mfsync/file_handler.h"
+#include "mfsync/crypto.h"
 
 namespace mfsync::multicast
 {
@@ -18,14 +19,17 @@ public:
                const boost::asio::ip::address& listen_address,
                const boost::asio::ip::address& multicast_address,
                const short multicast_port,
-               mfsync::file_handler* file_handler);
+               mfsync::file_handler* file_handler,
+               mfsync::crypto::crypto_handler& crypto_handler);
 
   void handle_receive_from(const boost::system::error_code& error, size_t bytes_recvd);
 
 private:
   mutable std::mutex mutex_;
+  boost::asio::io_context& io_context_;
   boost::asio::ip::udp::socket socket_;
   mfsync::file_handler* file_handler_;
+  mfsync::crypto::crypto_handler& crypto_handler_;
   boost::asio::ip::udp::endpoint sender_endpoint_;
   enum { max_length = 1024 };
   char data_[max_length];
