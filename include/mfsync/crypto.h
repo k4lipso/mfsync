@@ -14,6 +14,8 @@
 #include <cryptopp/osrng.h>
 #include <filesystem>
 
+#include <nlohmann/json.hpp>
+
 namespace mfsync::crypto
 {
   using namespace CryptoPP;
@@ -28,9 +30,11 @@ namespace mfsync::crypto
     static key_wrapper create(const std::filesystem::path& path)
     {
       key_wrapper result;
-      if(std::filesystem::exists(path))
+      //somehow ecdh.Load(..) does not initialize the keys
+      //therefore get_shared_secret fails later on
+      if(false && std::filesystem::exists(path))
       {
-        FileSource fsA{"testA", true};
+        FileSource fsA{path.c_str(), true};
         result.ecdh.Load(fsA);
 
         AutoSeededRandomPool prng;
@@ -42,7 +46,7 @@ namespace mfsync::crypto
       }
       else
       {
-        FileSink filesinkA("testA");
+        FileSink filesinkA(path.c_str());
         result = key_wrapper::create();
         result.ecdh.Save(filesinkA);
       }
@@ -112,6 +116,7 @@ namespace mfsync::crypto
       encryption_wrapper result;
       result.cipher_text.resize(wrapper.cipher_text.size());
       result.mac = wrapper.mac;
+      result.aad = wrapper.aad;
 
       auto IV = get_nonce_from_count(count);
 
@@ -130,6 +135,128 @@ namespace mfsync::crypto
     std::vector<byte> cipher_text;
     std::array<byte, 16> mac;
     std::string aad;
+  };
+
+  inline void to_json(nlohmann::json& j, const encryption_wrapper& file_info) {
+    //TODO: this is super inefficient!
+    j["cipher_text"] = file_info.cipher_text;
+    j["mac"] = file_info.mac;
+    j["aad"] = file_info.aad;
+  }
+
+  inline void from_json(const nlohmann::json& j, encryption_wrapper& file_info) {
+    file_info.cipher_text = j.at("cipher_text").get<std::vector<byte>>();
+    file_info.mac = j.at("mac").get<std::array<byte, 16>>();
+    j.at("aad").get_to(file_info.aad);
+  }
+
+  struct key_count_pair
+  {
+    SecByteBlock key;
+    size_t count = 0;
+  };
+
+  class crypto_handler
+  {
+  public:
+    bool init(const std::filesystem::path& path)
+    {
+      std::unique_lock lk{mutex_};
+      key_pair_ = key_wrapper::create(path);
+      return true;
+    }
+
+    std::string get_public_key() const
+    {
+      std::string result;
+      HexEncoder encoder(new StringSink(result));
+      StringSource(key_pair_.public_key, key_pair_.public_key.size(),
+                   true, new Redirector(encoder));
+      return result;
+    }
+
+    bool trust_key(std::string pub_key)
+    {
+      std::unique_lock lk{mutex_};
+      if(trusted_keys_.contains(pub_key))
+      {
+        return true;
+      }
+
+      SecByteBlock decoded;
+
+      HexDecoder decoder;
+      decoder.Put( (byte*)pub_key.data(), pub_key.size() );
+      decoder.MessageEnd();
+      word64 size = decoder.MaxRetrievable();
+      if(size && size <= SIZE_MAX)
+      {
+          decoded.resize(size);
+          decoder.Get((byte*)&decoded[0], decoded.size());
+      }
+
+
+      auto shared_secret = key_pair_.get_shared_secret(std::move(decoded));
+
+      if(!shared_secret.has_value())
+      {
+        spdlog::debug("Creating shared secret from pub key {} failed", pub_key);
+        return false;
+      }
+
+      trusted_keys_[pub_key] = key_count_pair{ .key = std::move(shared_secret.value()) };
+      return true;
+    }
+
+    std::optional<encryption_wrapper> encrypt(const std::string& pub_key,
+                                              std::string plain,
+                                              std::string aad)
+    {
+      if(!trusted_keys_.contains(pub_key))
+      {
+        return std::nullopt;
+      }
+
+      return encryption_wrapper::create(trusted_keys_.at(pub_key).key,
+                                        std::move(plain),
+                                        get_count(pub_key),
+                                        std::move(aad));
+    }
+
+    std::optional<encryption_wrapper> decrypt(const std::string& pub_key,
+                                              const encryption_wrapper& wrapper)
+    {
+      if(!trusted_keys_.contains(pub_key))
+      {
+        return std::nullopt;
+      }
+
+      return encryption_wrapper::decrypt(trusted_keys_.at(pub_key).key,
+                                         wrapper,
+                                         get_count(pub_key));
+    }
+
+
+  private:
+    size_t get_count(const std::string& pub_key)
+    {
+      std::unique_lock lk{mutex_};
+      if(!trusted_keys_.contains(pub_key))
+      {
+        spdlog::error("get_count of non trusted key.");
+        return 0;
+      }
+
+      return ++trusted_keys_.at(pub_key).count;
+    }
+
+    mutable std::mutex mutex_;
+    std::vector<size_t> count_vec_;
+
+    key_wrapper key_pair_;
+
+    //mapping public key to shared key + nonce count
+    std::map<std::string, key_count_pair> trusted_keys_;
   };
 
   void test();

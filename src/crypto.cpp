@@ -19,42 +19,44 @@ void test()
 
   using namespace CryptoPP;
 
-  auto keyA = key_wrapper::create("testA");
-  auto keyB = key_wrapper::create("testA");
+  crypto_handler A, B;
+  A.init("testA.key");
+  B.init("testB.key");
 
-  auto sharedA = keyA.get_shared_secret(keyB.public_key).value();
-  auto sharedB = keyB.get_shared_secret(keyA.public_key).value();
+  A.trust_key(B.get_public_key());
+  B.trust_key(A.get_public_key());
 
-  HexEncoder encoder(new FileSink(std::cout));
-  std::cout << "Shared secret (A): ";
-  StringSource(sharedA, sharedA.size(), true, new Redirector(encoder));
-  std::cout << std::endl;
-  std::cout << "Shared secret (B): ";
-  StringSource(sharedB, sharedB.size(), true, new Redirector(encoder));
-  std::cout << std::endl;
+  std::string test_msg{"This is a test message"};
+  std::string aad_msg{"This is unencrypted info"};
 
+  std::cout << "orig: " << test_msg << '\n';
+  std::cout << "aad : " << aad_msg << '\n';
 
-  std::string plain("My Plaintext!! My Dear plaintext!!"), cipher, recover;
-  auto encrypted = encryption_wrapper::create(sharedA, plain, 2342);
+  const auto encr  = A.encrypt(B.get_public_key(), test_msg, aad_msg);
 
-  std::cout << "Plain: ";
-  StringSource((const byte*)plain.data(), plain.size(), true, new HexEncoder(new FileSink(std::cout)));
-  std::cout << "\n" << std::endl;
-  std::cout << "Cipher: ";
-  StringSource((const byte*)encrypted.cipher_text.data(), encrypted.cipher_text.size(), true, new HexEncoder(new FileSink(std::cout)));
-  std::cout << std::endl;
-  std::cout << "MAC: ";
-  StringSource(encrypted.mac.data(), encrypted.mac.size(), true, new HexEncoder(new FileSink(std::cout)));
-  std::cout << "\n" << std::endl;
-
-  auto decrypted = encryption_wrapper::decrypt(sharedB, encrypted, 2342);
-  if(decrypted.has_value())
+  if(!encr.has_value())
   {
-    std::cout << "Recover: ";
-    StringSource((const byte*)decrypted.value().cipher_text.data(), decrypted.value().cipher_text.size(),
-                 true, new HexEncoder(new FileSink(std::cout)));
-    std::cout << "\n" << std::endl;
+    spdlog::error("ecnr failed");
+    return;
   }
+
+  std::cout << "Encr: ";
+  StringSource((const byte*)encr.value().cipher_text.data(), encr.value().cipher_text.size(), true, new HexEncoder(new FileSink(std::cout)));
+  std::cout << std::endl;
+
+  const auto decr = B.decrypt(A.get_public_key(), encr.value());
+
+  if(!decr.has_value())
+  {
+    spdlog::error("decr failed");
+    return;
+  }
+
+  std::cout << "Decr: ";
+  StringSource((const byte*)decr.value().cipher_text.data(), decr.value().cipher_text.size(),
+               true, new FileSink(std::cout));
+  std::cout << "\n" << std::endl;
+  std::cout << "aad : " << decr.value().aad << '\n';
 }
 
 }
