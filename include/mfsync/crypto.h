@@ -12,16 +12,43 @@
 #include <cryptopp/hex.h>
 #include <cryptopp/xed25519.h>
 #include <cryptopp/osrng.h>
+#include <filesystem>
 
 namespace mfsync::crypto
 {
   using namespace CryptoPP;
   struct key_wrapper {
+    key_wrapper() = default;
     key_wrapper(x25519 ecdh_)
       : ecdh(std::move(ecdh_))
       , private_key(ecdh.PrivateKeyLength())
       , public_key(ecdh.PublicKeyLength())
     {}
+
+    static key_wrapper create(const std::filesystem::path& path)
+    {
+      key_wrapper result;
+      if(std::filesystem::exists(path))
+      {
+        FileSource fsA{"testA", true};
+        result.ecdh.Load(fsA);
+
+        AutoSeededRandomPool prng;
+        bool valid = result.ecdh.Validate(prng, 3);
+        if(valid == false)
+        {
+          spdlog::error("Invalid private key");
+        }
+      }
+      else
+      {
+        FileSink filesinkA("testA");
+        result = key_wrapper::create();
+        result.ecdh.Save(filesinkA);
+      }
+
+      return result;
+    }
 
     static key_wrapper create()
     {
@@ -57,9 +84,6 @@ namespace mfsync::crypto
       result.cipher_text.resize(plain.size());
       result.aad = std::move(arbitary_data);
 
-      //AutoSeededRandomPool rnd_pool;
-      //SecByteBlock IV(12);
-      //rnd_pool.GenerateBlock(IV, IV.size());
       auto IV = get_nonce_from_count(count);
 
       ChaCha20Poly1305::Encryption enc;
@@ -89,9 +113,6 @@ namespace mfsync::crypto
       result.cipher_text.resize(wrapper.cipher_text.size());
       result.mac = wrapper.mac;
 
-      //AutoSeededRandomPool rnd_pool;
-      //SecByteBlock IV(12);
-      //rnd_pool.GenerateBlock(IV, IV.size());
       auto IV = get_nonce_from_count(count);
 
       ChaCha20Poly1305::Decryption dec;
