@@ -43,6 +43,21 @@ namespace mfsync
     unsigned chunksize = 0;
   };
 
+  struct host_information
+  {
+    std::string public_key;
+    std::string version;
+    std::string ip;
+    unsigned short port;
+  };
+
+  inline void from_json(const nlohmann::json& j, host_information& host_info) {
+    j.at("public_key").get_to(host_info.public_key);
+    j.at("port").get_to(host_info.port);
+    j.at("version").get_to(host_info.version);
+  }
+
+
   inline void to_json(nlohmann::json& j, const file_information& file_info) {
     j = nlohmann::json{{"file_name", file_info.file_name},
              {"size", file_info.size}};

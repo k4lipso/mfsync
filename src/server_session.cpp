@@ -10,9 +10,11 @@ namespace mfsync::filetransfer
 
 template<typename SocketType>
 server_session_base<SocketType>::server_session_base(SocketType socket,
-                                                     mfsync::file_handler& handler)
+                                                     mfsync::file_handler& handler,
+                                                     mfsync::crypto::crypto_handler& crypto_handler)
   : socket_(std::move(socket))
   , file_handler_(handler)
+  , crypto_handler_(crypto_handler)
 {}
 
 template<typename SocketType>
@@ -21,12 +23,12 @@ SocketType& server_session_base<SocketType>::get_socket()
   return socket_;
 }
 
-server_session::server_session(boost::asio::ip::tcp::socket socket, mfsync::file_handler& handler)
-  : server_session_base<boost::asio::ip::tcp::socket>(std::move(socket), handler)
+server_session::server_session(boost::asio::ip::tcp::socket socket, mfsync::file_handler& handler, mfsync::crypto::crypto_handler& crypto_handler)
+  : server_session_base<boost::asio::ip::tcp::socket>(std::move(socket), handler, crypto_handler)
 {}
 
-server_tls_session::server_tls_session(boost::asio::ssl::stream<boost::asio::ip::tcp::socket> socket, mfsync::file_handler& handler)
-  : server_session_base<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>(std::move(socket), handler)
+server_tls_session::server_tls_session(boost::asio::ssl::stream<boost::asio::ip::tcp::socket> socket, mfsync::file_handler& handler, mfsync::crypto::crypto_handler& crypto_handler)
+  : server_session_base<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>(std::move(socket), handler, crypto_handler)
 {}
 
 void server_session::start()
@@ -83,6 +85,24 @@ void server_session_base<SocketType>::handle_read_header(boost::system::error_co
   std::string message(std::istreambuf_iterator<char>(is), {});
   spdlog::debug("Received header: {}", message);
 
+  const auto type = protocol::get_message_type(message);
+
+  if(type == protocol::type::INIT)
+  {
+    auto optional_j = protocol::get_json_from_message(message);
+
+    if(!optional_j.has_value())
+    {
+      return;
+    }
+
+    const auto& j = optional_j.value();
+    const auto pub_key = j.at("public_key").get<std::string>();
+    spdlog::debug("received init message: {}", pub_key);
+    respond_encrypted(pub_key);
+    return;
+  }
+
   const auto file = protocol::get_requested_file_from_message(message);
   if(!file.has_value())
   {
@@ -99,6 +119,47 @@ void server_session_base<SocketType>::handle_read_header(boost::system::error_co
   {
     reply_with_error("file doesnt exists");
   }
+}
+
+template<typename SocketType>
+void server_session_base<SocketType>::respond_encrypted(const std::string& pub_key)
+{
+  if(!crypto_handler_.trust_key(pub_key))
+  {
+    //TODO send DENIED message
+  }
+
+
+  //TODO: set port properly
+  auto msg =
+      protocol::create_message_from_file_info(file_handler_.get_stored_files(),
+                                              mfsync::protocol::TCP_PORT);
+
+  auto wrapper = crypto_handler_.encrypt(pub_key, msg);
+
+  if(!wrapper.has_value())
+  {
+    spdlog::debug("encrypt failed for {}", pub_key);
+  }
+
+  auto j = nlohmann::json(wrapper.value());
+
+  message_ = protocol::wrap_with_header(j.dump());
+
+  spdlog::debug("Sending response: {}", message_);
+  async_write(socket_,
+    boost::asio::buffer(message_.data(), message_.size()),
+    [me = this->shared_from_this()](boost::system::error_code const &ec, std::size_t) {
+      if(!ec)
+      {
+        spdlog::debug("Done sending response");
+        me->read_confirmation();
+      }
+      else
+      {
+        spdlog::debug("async write failed: {}", ec.message());
+      }
+    });
 }
 
 template<typename SocketType>

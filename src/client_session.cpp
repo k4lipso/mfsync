@@ -7,6 +7,171 @@
 namespace mfsync::filetransfer
 {
 
+
+template<typename SocketType>
+client_encrypted_session<SocketType>::client_encrypted_session(boost::asio::io_context& context,
+                                                   SocketType socket,
+                                                   mfsync::file_handler& handler,
+                                                   mfsync::crypto::crypto_handler& crypto_handler,
+                                                   mfsync::host_information host_info)
+  : io_context_(context)
+  , socket_(std::move(socket))
+  , file_handler_(handler)
+  , crypto_handler_(crypto_handler)
+  , host_info_(std::move(host_info))
+{}
+
+client_encrypted_file_list::client_encrypted_file_list(boost::asio::io_context& context,
+                                                       mfsync::file_handler& handler,
+                                                       mfsync::crypto::crypto_handler& crypto_handler,
+                                                       mfsync::host_information host_info)
+  : client_encrypted_session<boost::asio::ip::tcp::socket>(
+      context,
+      boost::asio::ip::tcp::socket{context},
+      handler,
+      crypto_handler,
+      std::move(host_info))
+{}
+
+template<typename SocketType>
+void client_encrypted_session<SocketType>::initialize_communication()
+{
+  message_ = protocol::create_init_message(crypto_handler_.get_public_key());
+  spdlog::debug("Sending message: {}", message_);
+
+  async_write(socket_,
+    boost::asio::buffer(message_.data(), message_.size()),
+    [me = this->shared_from_this()](boost::system::error_code const &ec, std::size_t) {
+      if(!ec)
+      {
+        spdlog::debug("Done sending init message");
+        me->read_encrypted_response();
+      }
+      else
+      {
+        spdlog::debug("async write failed: {}", ec.message());
+      }
+    });
+}
+
+template<typename SocketType>
+void client_encrypted_session<SocketType>::read_encrypted_response()
+{
+  boost::asio::async_read_until(
+    socket_,
+    stream_buffer_,
+    mfsync::protocol::MFSYNC_HEADER_END,
+    [me = this->shared_from_this()](boost::system::error_code const &error, std::size_t bytes_transferred)
+    {
+      me->handle_read_encrypted_response(error, bytes_transferred);
+    });
+}
+
+template<typename SocketType>
+void client_encrypted_session<SocketType>::handle_read_encrypted_response(boost::system::error_code const &error, std::size_t bytes_transferred)
+{
+  if(error)
+  {
+    spdlog::debug("Error on handle_read_file_request_response: {}", error.message());
+    return;
+  }
+
+  boost::asio::streambuf::const_buffers_type bufs = stream_buffer_.data();
+  std::string response_message(
+    boost::asio::buffers_begin(bufs),
+    boost::asio::buffers_begin(bufs) + bytes_transferred);
+
+  stream_buffer_.consume(bytes_transferred);
+
+  spdlog::debug("Received encrypted response: {}", response_message);
+
+  auto optional_json = protocol::get_json_from_message(response_message);
+
+  if(!optional_json.has_value())
+  {
+    return;
+  }
+
+  const auto& wrapper = optional_json.value().get<crypto::encryption_wrapper>();
+
+  auto decrypted = crypto_handler_.decrypt(host_info_.public_key, wrapper);
+
+  if(!decrypted.has_value())
+  {
+    spdlog::debug("decryption failed");
+  }
+
+  auto available =
+      mfsync::protocol::get_available_files_from_message(
+        std::string(reinterpret_cast<char*>(decrypted.value().cipher_text.data()),
+                    decrypted.value().cipher_text.size()), socket_.remote_endpoint());
+
+  if(available.has_value())
+  {
+    file_handler_.add_available_files(std::move(available.value()));
+  }
+
+  //if(response_message != protocol::create_begin_transmission_message())
+  //{
+  //  spdlog::debug("Server returned with error: {}", response_message);
+  //  handle_error();
+  //  return;
+  //}
+
+  //message_ = std::move(response_message);
+  //spdlog::debug("Sending response: {}", message_);
+
+  //bytes_written_to_requested_ = requested_.offset;
+
+  //async_write(socket_,
+  //  boost::asio::buffer(message_.data(), message_.size()),
+  //  [me = this->shared_from_this()](boost::system::error_code const &ec, std::size_t) {
+  //    if(!ec)
+  //    {
+  //      spdlog::debug("Done sending response");
+
+  //      if(me->bar_ == nullptr)
+  //      {
+  //        me->bar_ = me->progress_->create_file_progress(me->requested_.file_info) ;
+  //        me->bar_->status = progress::STATUS::DOWNLOADING;
+  //      }
+
+  //      me->readbuf_.resize(me->requested_.chunksize);
+  //      me->read_file_chunk();
+  //    }
+  //    else
+  //    {
+  //      spdlog::debug("async write failed: {}", ec.message());
+  //      me->handle_error();
+  //    }
+  //  });
+}
+
+
+void client_encrypted_file_list::start_request()
+{
+  boost::asio::ip::tcp::resolver resolver{io_context_};
+  auto endpoint = resolver.resolve(host_info_.ip,
+                                   std::to_string(host_info_.port));
+
+  boost::asio::async_connect(
+    socket_,
+    endpoint,
+    [this, me = client_encrypted_session<boost::asio::ip::tcp::socket>::shared_from_this()]
+    (boost::system::error_code ec, boost::asio::ip::tcp::endpoint)
+    {
+      if(!ec)
+      {
+        me->initialize_communication();
+      }
+      else
+      {
+        spdlog::debug("Couldnt conntect. error: {}", ec.message());
+        spdlog::debug("Target host: {} {}", host_info_.ip, host_info_.port);
+      }
+    });
+}
+
 template<typename SocketType>
 client_session_base<SocketType>::client_session_base(boost::asio::io_context& context,
                                                      SocketType socket,

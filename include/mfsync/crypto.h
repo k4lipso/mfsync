@@ -177,6 +177,12 @@ namespace mfsync::crypto
 
     bool trust_key(std::string pub_key)
     {
+      if(!trust_all_)
+      {
+        //TODO: list with keys that are allowed
+        return false;
+      }
+
       std::unique_lock lk{mutex_};
       if(trusted_keys_.contains(pub_key))
       {
@@ -210,7 +216,7 @@ namespace mfsync::crypto
 
     std::optional<encryption_wrapper> encrypt(const std::string& pub_key,
                                               std::string plain,
-                                              std::string aad)
+                                              std::string aad = "")
     {
       if(!trusted_keys_.contains(pub_key))
       {
@@ -255,6 +261,7 @@ namespace mfsync::crypto
 
     key_wrapper key_pair_;
 
+    bool trust_all_ = true;
     //mapping public key to shared key + nonce count
     std::map<std::string, key_count_pair> trusted_keys_;
   };

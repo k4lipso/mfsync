@@ -6,17 +6,19 @@ namespace mfsync::multicast
                            const boost::asio::ip::address& multicast_address,
                            short multicast_port,
                            unsigned short tcp_port,
-                           file_handler& filehandler)
+                           file_handler& filehandler,
+                           std::string pub_key)
     : endpoint_(multicast_address, multicast_port)
     , socket_(io_service, endpoint_.protocol())
     , timer_(io_service)
     , port_(tcp_port)
     , file_handler_(filehandler)
+    , public_key_{std::move(pub_key)}
   {}
 
   void file_sender::init()
   {
-    auto messages = protocol::create_messages_from_file_info(file_handler_.get_stored_files(), port_);
+    auto messages = protocol::create_host_announcement_message(public_key_, port_);
 
     if(messages.empty())
     {
@@ -25,13 +27,13 @@ namespace mfsync::multicast
       return;
     }
 
-    for(const auto& message : messages)
-    {
+    //for(const auto& message : messages)
+    //{
       socket_.async_send_to(
-          boost::asio::buffer(message), endpoint_,
+          boost::asio::buffer(messages), endpoint_,
           std::bind(&file_sender::handle_send_to, this,
             std::placeholders::_1));
-    }
+    //}
   }
 
   void file_sender::set_outbound_interface(const boost::asio::ip::address_v4& address)
@@ -54,27 +56,26 @@ namespace mfsync::multicast
   {
     if (!error)
     {
-      auto messages = protocol::create_messages_from_file_info(file_handler_.get_stored_files(), port_);
+      auto messages = protocol::create_host_announcement_message(public_key_, port_);
 
-      if(!messages.empty())
-      {
-        message_ = messages.front();
-      }
+      //if(messages.empty())
+      //{
+      //  message_ = messages.front();
+      //}
 
-      for(const auto& message : messages)
-      {
-        if(message.empty())
-        {
-          continue;
-        }
+//      for(const auto& message : messages)
+//      {
+//        if(message.empty())
+//        {
+//          continue;
+//        }
 
-        spdlog::trace("Sending Message: '{}'", message);
+        spdlog::trace("Sending Message: '{}'", messages);
         socket_.async_send_to(
-            boost::asio::buffer(message), endpoint_,
+            boost::asio::buffer(messages), endpoint_,
             std::bind(&file_sender::handle_send_to, this,
               std::placeholders::_1));
-        std::this_thread::sleep_for(std::chrono::milliseconds(42));
-      }
+      //}
     }
   }
 } //closing namespace mfsync::multicast
