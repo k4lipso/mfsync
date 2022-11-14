@@ -36,7 +36,7 @@ client_encrypted_file_list::client_encrypted_file_list(boost::asio::io_context& 
 template<typename SocketType>
 void client_encrypted_session<SocketType>::initialize_communication()
 {
-  message_ = protocol::create_init_message(crypto_handler_.get_public_key());
+  message_ = protocol::create_file_list_message(crypto_handler_.get_public_key());
   spdlog::debug("Sending message: {}", message_);
 
   async_write(socket_,
@@ -85,6 +85,12 @@ void client_encrypted_session<SocketType>::handle_read_encrypted_response(boost:
 
   spdlog::debug("Received encrypted response: {}", response_message);
 
+  if(protocol::get_message_type(response_message) == protocol::type::DENIED)
+  {
+    spdlog::debug("file list request got denied by host {}.", host_info_.public_key);
+    return;
+  }
+
   auto optional_json = protocol::get_json_from_message(response_message);
 
   if(!optional_json.has_value())
@@ -104,7 +110,8 @@ void client_encrypted_session<SocketType>::handle_read_encrypted_response(boost:
   auto available =
       mfsync::protocol::get_available_files_from_message(
         std::string(reinterpret_cast<char*>(decrypted.value().cipher_text.data()),
-                    decrypted.value().cipher_text.size()), socket_.remote_endpoint());
+                    decrypted.value().cipher_text.size()), socket_.remote_endpoint(),
+                    host_info_.public_key);
 
   if(available.has_value())
   {
@@ -176,27 +183,38 @@ template<typename SocketType>
 client_session_base<SocketType>::client_session_base(boost::asio::io_context& context,
                                                      SocketType socket,
                                                      mfsync::concurrent::deque<available_file>& deque,
-                                                     mfsync::file_handler& handler)
+                                                     mfsync::file_handler& handler,
+                                                     mfsync::crypto::crypto_handler& crypto_handler)
   : io_context_(context)
   , socket_(std::move(socket))
   , deque_(deque)
   , file_handler_(handler)
+  , crypto_handler_(crypto_handler)
 {}
 
 client_session::client_session(boost::asio::io_context& context,
                                mfsync::concurrent::deque<available_file>& deque,
-                               mfsync::file_handler& handler)
-  : client_session_base<boost::asio::ip::tcp::socket>(context, boost::asio::ip::tcp::socket{context}, deque, handler)
+                               mfsync::file_handler& handler,
+                               mfsync::crypto::crypto_handler& crypto_handler)
+  : client_session_base<boost::asio::ip::tcp::socket>(
+      context,
+      boost::asio::ip::tcp::socket{context},
+      deque,
+      handler,
+      crypto_handler)
 {}
 
 client_tls_session::client_tls_session(boost::asio::io_context& context,
                                        boost::asio::ssl::context& ssl_context,
                                        mfsync::concurrent::deque<available_file>& deque,
-                                       mfsync::file_handler& handler)
-  : client_session_base<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>(context,
-        boost::asio::ssl::stream<boost::asio::ip::tcp::socket>(context, ssl_context),
-        deque,
-        handler)
+                                       mfsync::file_handler& handler,
+                                       mfsync::crypto::crypto_handler& crypto_handler)
+  : client_session_base<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>(
+      context,
+      boost::asio::ssl::stream<boost::asio::ip::tcp::socket>(context, ssl_context),
+      deque,
+      handler,
+      crypto_handler)
 {
   socket_.set_verify_mode(boost::asio::ssl::verify_peer);
   socket_.set_verify_callback(std::bind(&client_tls_session::verify_certificate,
@@ -260,6 +278,7 @@ void client_session::start_request()
 
   //not setting offset here, it will be set by file_handler when file is created
   requested_.file_info = std::move(available.value().file_info);
+  pub_key_ = available.value().public_key;
   requested_.chunksize = mfsync::protocol::CHUNKSIZE;
 
   boost::asio::ip::tcp::resolver resolver{io_context_};
@@ -337,7 +356,18 @@ void client_session_base<SocketType>::request_file()
 
   ofstream_ = std::move(output_file_stream.value());
 
-  message_ = protocol::create_message_from_requested_file(requested_);
+  auto tmp_msg = protocol::create_message_from_requested_file(requested_);
+  auto wrapper = crypto_handler_.encrypt(pub_key_, tmp_msg);
+
+  if(!wrapper.has_value())
+  {
+    spdlog::debug("encrypt failed for {}", pub_key_);
+    return;
+  }
+
+  auto j = nlohmann::json(wrapper.value());
+
+  message_ = protocol::create_file_message(crypto_handler_.get_public_key(), j.dump());
 
   spdlog::debug("Sending message: {}", message_);
 
@@ -384,7 +414,35 @@ void client_session_base<SocketType>::handle_read_file_request_response(boost::s
 
     spdlog::debug("Received file_request_response: {}", response_message);
 
-    if(response_message != protocol::create_begin_transmission_message())
+
+    spdlog::debug("Received encrypted response: {}", response_message);
+
+    if(protocol::get_message_type(response_message) == protocol::type::DENIED)
+    {
+      spdlog::debug("file list request got denied by host {}.", pub_key_);
+      return;
+    }
+
+    auto optional_json = protocol::get_json_from_message(response_message);
+
+    if(!optional_json.has_value())
+    {
+      return;
+    }
+
+    const auto& wrapper = optional_json.value().get<crypto::encryption_wrapper>();
+
+    auto decrypted = crypto_handler_.decrypt(pub_key_, wrapper);
+
+    if(!decrypted.has_value())
+    {
+      spdlog::debug("decryption failed");
+    }
+
+    nlohmann::json j = nlohmann::json::parse(std::string(reinterpret_cast<char*>(decrypted.value().cipher_text.data()),
+                                             decrypted.value().cipher_text.size()));
+
+    if(j.at("type") != "accepted")
     {
       spdlog::debug("Server returned with error: {}", response_message);
       handle_error();

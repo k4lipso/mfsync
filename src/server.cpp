@@ -100,13 +100,20 @@ void server::handle_new_connection(boost::asio::ip::tcp::socket socket,
   if(ssl_context_.has_value())
   {
     auto handler = std::make_shared<mfsync::filetransfer::server_tls_session>(
-      boost::asio::ssl::stream<boost::asio::ip::tcp::socket>(std::move(socket), ssl_context_.value()), file_handler_, crypto_handler_);
+      boost::asio::ssl::stream<boost::asio::ip::tcp::socket>(
+            std::move(socket),
+            ssl_context_.value()),
+      file_handler_, crypto_handler_);
+
     handler->set_progress(progress_);
     handler->start();
   }
   else
   {
-    auto handler = std::make_shared<mfsync::filetransfer::server_session>(std::move(socket), file_handler_, crypto_handler_);
+    auto handler = std::make_shared<mfsync::filetransfer::server_session>(
+          std::move(socket),
+          file_handler_,
+          crypto_handler_);
     handler->set_progress(progress_);
     handler->start();
   }
