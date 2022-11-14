@@ -8,10 +8,12 @@ namespace mfsync
 file_receive_handler::file_receive_handler(boost::asio::io_context& context,
                                            mfsync::file_handler& file_handler,
                                            size_t max_concurrent_sessions,
+                                           mfsync::crypto::crypto_handler& crypto_handler,
                                            filetransfer::progress_handler* progress)
   : io_context_(context)
   , timer_(context)
   , file_handler_(file_handler)
+  , crypto_handler_(crypto_handler)
   , request_all_{true}
   , sessions_{max_concurrent_sessions}
   , progress_(progress)
@@ -21,11 +23,13 @@ file_receive_handler::file_receive_handler(boost::asio::io_context& context,
 file_receive_handler::file_receive_handler(boost::asio::io_context& context,
                                            mfsync::file_handler& file_handler,
                                            size_t max_concurrent_sessions,
+                                           mfsync::crypto::crypto_handler& crypto_handler,
                                            filetransfer::progress_handler* progress,
                                            std::vector<std::string> files_to_request)
   : io_context_(context)
   , timer_(context)
   , file_handler_(file_handler)
+  , crypto_handler_(crypto_handler)
   , files_to_request_(std::move(files_to_request))
   , request_all_{false}
   , sessions_{max_concurrent_sessions}
@@ -137,14 +141,16 @@ void file_receive_handler::start_new_session()
           std::make_shared<mfsync::filetransfer::client_tls_session>(io_context_,
                                                                      ctx_.value(),
                                                                      request_queue_,
-                                                                     file_handler_);
+                                                                     file_handler_,
+                                                                     crypto_handler_);
     }
     else
     {
       session =
           std::make_shared<mfsync::filetransfer::client_session>(io_context_,
                                                                  request_queue_,
-                                                                 file_handler_);
+                                                                 file_handler_,
+                                                                 crypto_handler_);
     }
 
     session_ptr = session;

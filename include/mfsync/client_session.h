@@ -83,7 +83,8 @@ public:
   client_session_base(boost::asio::io_context& context,
                       SocketType socket,
                       mfsync::concurrent::deque<available_file>& deque,
-                      mfsync::file_handler& handler);
+                      mfsync::file_handler& handler,
+                      mfsync::crypto::crypto_handler& crypto_handler);
   virtual ~client_session_base() = default;
 
   SocketType& get_socket();
@@ -102,6 +103,8 @@ protected:
   size_t bytes_written_to_requested_ = 0;
   mfsync::concurrent::deque<available_file>& deque_;
   mfsync::file_handler& file_handler_;
+  mfsync::crypto::crypto_handler& crypto_handler_;
+  std::string pub_key_;
   std::string message_;
   boost::asio::streambuf stream_buffer_;
   std::vector<uint8_t> readbuf_;
@@ -115,7 +118,8 @@ public:
   client_session() = delete;
   client_session(boost::asio::io_context& context,
                  mfsync::concurrent::deque<available_file>& deque,
-                 mfsync::file_handler& handler);
+                 mfsync::file_handler& handler,
+                 mfsync::crypto::crypto_handler& crypto_handler);
   virtual ~client_session() = default;
 
   virtual void start_request() override;
@@ -129,7 +133,8 @@ public:
   client_tls_session(boost::asio::io_context& context,
                      boost::asio::ssl::context& ssl_context,
                      mfsync::concurrent::deque<available_file>& deque,
-                     mfsync::file_handler& handler);
+                     mfsync::file_handler& handler,
+                     mfsync::crypto::crypto_handler& crypto_handler);
   virtual ~client_tls_session() = default;
 
   virtual void start_request() override;

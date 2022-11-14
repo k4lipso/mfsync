@@ -34,6 +34,7 @@ namespace mfsync
     file_information file_info;
     boost::asio::ip::address source_address;
     unsigned short source_port = 0;
+    std::string public_key;
   };
 
   struct requested_file

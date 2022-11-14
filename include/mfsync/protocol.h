@@ -28,15 +28,17 @@ namespace mfsync::protocol
 
   enum class type {
     NONE = 0,
-    INIT,
-    FILE_REQUEST,
+    DENIED,
+    FILE_LIST,
+    FILE,
   };
 
   type get_message_type(const std::string& msg);
   std::optional<nlohmann::json> get_json_from_message(const std::string& msg);
 
   std::string wrap_with_header(const std::string& msg);
-  std::string create_init_message(const std::string& public_key);
+  std::string create_file_list_message(const std::string& public_key);
+  std::string create_file_message(const std::string& public_key, const std::string& msg);
   std::string create_error_message(const std::string& reason);
 
   std::string create_message_from_requested_file(const requested_file& file);
@@ -53,14 +55,17 @@ namespace mfsync::protocol
 
   std::optional<file_handler::available_files>
   get_available_files_from_message(const std::string& message,
-                                   const boost::asio::ip::tcp::endpoint& endpoint);
+                                   const boost::asio::ip::tcp::endpoint& endpoint,
+                                   const std::string& pub_key = "");
 
   std::optional<file_handler::available_files>
   get_available_files_from_message(const std::string& message,
-                                   const boost::asio::ip::udp::endpoint& endpoint);
+                                   const boost::asio::ip::udp::endpoint& endpoint,
+                                   const std::string& pub_key = "");
 
   std::optional<file_handler::available_files>
   get_available_files_from_message(const std::string& message,
-                                   const boost::asio::ip::address& address = {});
+                                   const boost::asio::ip::address& address = {},
+                                   const std::string& pub_key = "");
 }
 

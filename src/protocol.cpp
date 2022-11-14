@@ -32,19 +32,22 @@ type get_message_type(const std::string& msg)
     }
 
     const auto& type_string = j.at("type").get<std::string>();
-    if(type_string == "init")
+    if(type_string == "file_list")
     {
-      return type::INIT;
+      return type::FILE_LIST;
     }
-    if(type_string == "file_request")
+    if(type_string == "denied")
     {
-      return type::FILE_REQUEST;
+      return type::DENIED;
+    }
+    if(type_string == "file")
+    {
+      return type::FILE;
     }
   }
   catch(std::exception& er)
   {
     spdlog::debug("Json Error: {}", er.what());
-    return type::NONE;
   }
 
   return type::NONE;
@@ -83,10 +86,21 @@ std::string wrap_with_header(const std::string& msg)
   return message_sstring.str();
 }
 
-std::string create_init_message(const std::string& public_key)
+std::string create_file_message(const std::string& public_key, const std::string& msg)
 {
   nlohmann::json j;
-  j["type"] = "init";
+  j["type"] = "file";
+  j["version"] = protocol::VERSION;
+  j["public_key"] = public_key;
+  j["message"] = msg;
+
+  return wrap_with_header(j.dump());
+}
+
+std::string create_file_list_message(const std::string& public_key)
+{
+  nlohmann::json j;
+  j["type"] = "file_list";
   j["version"] = protocol::VERSION;
   j["public_key"] = public_key;
 
@@ -233,21 +247,24 @@ std::vector<std::string> create_messages_from_file_info(const file_handler::stor
 
 std::optional<file_handler::available_files>
 get_available_files_from_message(const std::string& message,
-                                 const boost::asio::ip::tcp::endpoint& endpoint)
+                                 const boost::asio::ip::tcp::endpoint& endpoint,
+                                 const std::string& pub_key)
 {
-  return get_available_files_from_message(message, endpoint.address());
+  return get_available_files_from_message(message, endpoint.address(), pub_key);
 }
 
 std::optional<file_handler::available_files>
 get_available_files_from_message(const std::string& message,
-                                 const boost::asio::ip::udp::endpoint& endpoint)
+                                 const boost::asio::ip::udp::endpoint& endpoint,
+                                 const std::string& pub_key)
 {
-  return get_available_files_from_message(message, endpoint.address());
+  return get_available_files_from_message(message, endpoint.address(), pub_key);
 }
 
 std::optional<file_handler::available_files>
 get_available_files_from_message(const std::string& message,
-                                 const boost::asio::ip::address& address)
+                                 const boost::asio::ip::address& address,
+                                 const std::string& pub_key)
 {
   if(message.empty())
   {
@@ -264,6 +281,7 @@ get_available_files_from_message(const std::string& message,
     {
       available_file av = available.get<available_file>();
       av.source_address = address;
+      av.public_key = pub_key;
       result.insert(av);
     }
 

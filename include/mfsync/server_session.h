@@ -47,6 +47,7 @@ protected:
   mfsync::file_handler& file_handler_;
   mfsync::crypto::crypto_handler& crypto_handler_;
   std::string message_;
+  std::string public_key_;
   requested_file requested_;
   boost::asio::streambuf stream_buffer_;
   std::vector<char> writebuf_;

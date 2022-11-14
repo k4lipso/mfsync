@@ -175,12 +175,20 @@ namespace mfsync::crypto
       return result;
     }
 
+    void add_allowed_key(const std::string& pub_key)
+    {
+      allowed_keys_.push_back(std::move(pub_key));
+    }
+
     bool trust_key(std::string pub_key)
     {
-      if(!trust_all_)
+      if(!allowed_keys_.empty())
       {
-        //TODO: list with keys that are allowed
-        return false;
+        if(std::none_of(allowed_keys_.begin(), allowed_keys_.end(),
+                        [&pub_key](const auto& key) { return key == pub_key; }))
+        {
+          return false;
+        }
       }
 
       std::unique_lock lk{mutex_};
@@ -264,6 +272,7 @@ namespace mfsync::crypto
     bool trust_all_ = true;
     //mapping public key to shared key + nonce count
     std::map<std::string, key_count_pair> trusted_keys_;
+    std::vector<std::string> allowed_keys_;
   };
 
   void test();

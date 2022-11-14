@@ -79,6 +79,7 @@ int main(int argc, char **argv)
        "paths to two files. first containing certificate and private key of the server. second containing dh parameters")
     ("client-tls,e", po::value<std::string>(), "paths to file containing all trusted certificates")
     ("wait-until,w", po::value<int>(), "stop program execution after the given amount of seconds.")
+    ("trusted-keys", po::value<std::vector<std::string>>()->multitoken(), "Manual specify trusted keys")
     ("outbound-addresses,a", po::value<std::vector<std::string>>()->multitoken(), "Manual specify multicast outbound interface addresses.")
     ("outbound-interfaces,i", po::value<std::vector<std::string>>()->multitoken(),
                               "Manual specify multicast outbound interface names. Multicast messages will be sent to the given interfaces");
@@ -141,6 +142,17 @@ int main(int argc, char **argv)
     spdlog::set_pattern(std::string{mfsync::protocol::MFSYNC_LOG_PREFIX} + "%v");
     spdlog::info("{}", public_key);
     return 0;
+  }
+
+  spdlog::debug("{}", public_key);
+
+  if(vm.count("trusted-keys"))
+  {
+    const auto& trusted = vm["trusted-keys"].as<std::vector<std::string>>();
+    for(const auto& key : trusted)
+    {
+      crypto_handler->add_allowed_key(key);
+    }
   }
 
   if(!vm.count("mode"))
@@ -384,8 +396,10 @@ int main(int argc, char **argv)
       concurrent_downloads = vm["concurrent_downloads"].as<size_t>();
     }
 
-    receiver = std::make_unique<mfsync::file_receive_handler>(io_service, file_handler,
-                                                              concurrent_downloads, progress_handler.get());
+    receiver = std::make_unique<mfsync::file_receive_handler>(
+          io_service, file_handler,
+          concurrent_downloads, *crypto_handler.get(),
+          progress_handler.get());
 
     if(!target_files.empty())
     {

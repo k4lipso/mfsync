@@ -182,7 +182,8 @@ TEST_CASE("request files by directory test", "[file_receive_handler]") {
   file_handler.add_available_files(std::move(availables));
 
   boost::asio::io_context ctx;
-  file_receive_handler_test receive_handler{ctx, file_handler, 1, nullptr};
+  mfsync::crypto::crypto_handler crypto_handler;
+  file_receive_handler_test receive_handler{ctx, file_handler, 1, crypto_handler, nullptr};
 
   //second create files that should be requested:
   std::vector<std::string> files_to_request{{
