@@ -50,7 +50,7 @@ protected:
   std::string public_key_;
   requested_file requested_;
   boost::asio::streambuf stream_buffer_;
-  std::vector<char> writebuf_;
+  std::vector<unsigned char> writebuf_;
   std::ifstream ifstream_;
   progress_handler* progress_;
   progress::file_progress_information* bar_ = nullptr;
