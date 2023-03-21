@@ -1,62 +1,71 @@
 #include "mfsync/crypto.h"
-#include "spdlog/spdlog.h"
 
 #include <cryptopp/chachapoly.h>
 #include <cryptopp/cryptlib.h>
-#include <cryptopp/chachapoly.h>
-#include <cryptopp/filters.h>
 #include <cryptopp/files.h>
+#include <cryptopp/filters.h>
 #include <cryptopp/hex.h>
-#include <cryptopp/xed25519.h>
 #include <cryptopp/osrng.h>
+#include <cryptopp/xed25519.h>
 
-namespace mfsync::crypto
-{
+#include "spdlog/spdlog.h"
 
-void test()
-{
-  spdlog::info("Generating private key:");
+namespace mfsync::crypto {
 
-  using namespace CryptoPP;
+void test() {
+    spdlog::info("Generating private key:");
 
-  crypto_handler A, B;
-  A.init("testA.key");
-  B.init("testB.key");
+    using namespace CryptoPP;
 
-  A.trust_key(B.get_public_key());
-  B.trust_key(A.get_public_key());
+    crypto_handler A, B;
+    A.init("testA.key");
+    B.init("testB.key");
 
-  std::string test_msg{"This is a test message"};
-  std::string aad_msg{"This is unencrypted info"};
+    A.trust_key(B.get_public_key());
+    B.trust_key(A.get_public_key());
 
-  std::cout << "orig: " << test_msg << '\n';
-  std::cout << "aad : " << aad_msg << '\n';
+    //try
+    //{
+    //  A.encrypt_file(B.get_public_key(), "crypto.test");
+    //  B.decrypt_file(A.get_public_key(), "crypto.test.encrypted");
+    //}
+    //catch(const Exception& ex)
+    //{
+    //  std::cout << ex.what() << std::endl;
+    //}
 
-  const auto encr  = A.encrypt(B.get_public_key(), test_msg, aad_msg);
+    std::string test_msg{"This is a test message"};
+    std::string aad_msg{"This is unencrypted info"};
 
-  if(!encr.has_value())
-  {
-    spdlog::error("ecnr failed");
-    return;
-  }
+    std::cout << "orig: " << test_msg << '\n';
+    std::cout << "aad : " << aad_msg << '\n';
 
-  std::cout << "Encr: ";
-  StringSource((const byte*)encr.value().cipher_text.data(), encr.value().cipher_text.size(), true, new HexEncoder(new FileSink(std::cout)));
-  std::cout << std::endl;
+    const auto encr = A.encrypt(B.get_public_key(), test_msg, aad_msg);
 
-  const auto decr = B.decrypt(A.get_public_key(), encr.value());
+    if (!encr.has_value()) {
+        spdlog::error("ecnr failed");
+        return;
+    }
 
-  if(!decr.has_value())
-  {
-    spdlog::error("decr failed");
-    return;
-  }
+    std::cout << "Encr: ";
+    StringSource((const byte*)encr.value().cipher_text.data(),
+                 encr.value().cipher_text.size(), true,
+                 new HexEncoder(new FileSink(std::cout)));
+    std::cout << std::endl;
 
-  std::cout << "Decr: ";
-  StringSource((const byte*)decr.value().cipher_text.data(), decr.value().cipher_text.size(),
-               true, new FileSink(std::cout));
-  std::cout << "\n" << std::endl;
-  std::cout << "aad : " << decr.value().aad << '\n';
+    const auto decr = B.decrypt(A.get_public_key(), encr.value());
+
+    if (!decr.has_value()) {
+        spdlog::error("decr failed");
+        return;
+    }
+
+    std::cout << "Decr: ";
+    StringSource((const byte*)decr.value().cipher_text.data(),
+                 decr.value().cipher_text.size(), true,
+                 new FileSink(std::cout));
+    std::cout << "\n" << std::endl;
+    std::cout << "aad : " << decr.value().aad << '\n';
 }
 
-}
+}  // namespace mfsync::crypto

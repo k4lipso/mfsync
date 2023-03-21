@@ -22,7 +22,7 @@ namespace mfsync::multicast
 
     if(messages.empty())
     {
-      timer_.expires_from_now(boost::posix_time::seconds(1));
+      timer_.expires_from_now(boost::posix_time::seconds(5));
       timer_.async_wait(std::bind(&file_sender::init, this));
       return;
     }
@@ -46,7 +46,7 @@ namespace mfsync::multicast
   {
     if(!error)
     {
-      timer_.expires_from_now(boost::posix_time::seconds(1));
+      timer_.expires_from_now(boost::posix_time::seconds(5));
       timer_.async_wait( std::bind(&file_sender::handle_timeout, this,
             std::placeholders::_1));
     }
