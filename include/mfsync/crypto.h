@@ -17,33 +17,6 @@
 namespace mfsync::crypto {
 using namespace CryptoPP;
 
-// class x25519Wrapper : public x25519 {
-//  public:
-//   using x25519::x25519;
-//
-//   FixedSizeSecBlock<byte, 32> GetPrivateKey() { return m_sk; }
-//
-//   SecByteBlock GetPublicKey() { return m_sk.begin(); }
-// };
-//
-// struct key_wrapper {
-//   key_wrapper() = default;
-//   key_wrapper(x25519Wrapper ecdh_)
-//       : ecdh(std::move(ecdh_)), private_key(), public_key() {}
-//
-//   static key_wrapper create(const std::filesystem::path& path);
-//   static key_wrapper create();
-//   std::optional<SecByteBlock> get_shared_secret(SecByteBlock
-//   other_public_key);
-//
-//   x25519Wrapper ecdh;
-//
-//   FixedSizeSecBlock<byte, 32> private_key;
-//   FixedSizeSecBlock<byte, 32> public_key;
-//   // SecByteBlock private_key;
-//   // SecByteBlock public_key;
-// };
-
 class x25519Wrapper : public x25519 {
  public:
   using x25519::x25519;
