@@ -100,31 +100,16 @@ void server_session_base<SocketType>::handle_read_header(
     return;
   }
 
-  auto optional_json = protocol::get_json_from_message(message);
+  const auto [no_error, pub_key, wrapper] = protocol::decompose_message(message);
+  const auto file_str = protocol::get_decrypted_message(message, crypto_handler_);
 
-  if (!optional_json.has_value()) {
+  if (!file_str.has_value()) {
+    spdlog::debug("could not decrypt message");
     return;
   }
 
-  const auto& wrapper_str =
-      optional_json.value().at("message").get<std::string>();
-
-  auto tmp_j = nlohmann::json::parse(wrapper_str);
-  const auto wrapper = tmp_j.get<crypto::encryption_wrapper>();
-
-  public_key_ = optional_json.value().at("public_key").get<std::string>();
-  auto decrypted = crypto_handler_.decrypt(public_key_, wrapper);
-
-  if (!decrypted.has_value()) {
-    spdlog::debug("decryption failed");
-    return;
-  }
-
-  const auto file_str =
-      std::string(reinterpret_cast<char*>(decrypted.value().cipher_text.data()),
-                  decrypted.value().cipher_text.size());
-
-  const auto file_j = protocol::get_json_from_message(file_str);
+  public_key_ = pub_key;
+  const auto file_j = protocol::get_json_from_message(file_str.value());
   const auto file = std::make_optional(file_j.value().get<requested_file>());
   if (!file.has_value()) {
     spdlog::debug("Couldnt create requested_file from message: {}", message);
@@ -181,7 +166,8 @@ void server_session_base<SocketType>::send_confirmation() {
   auto wrapped = crypto_handler_.encrypt(public_key_, j.dump());
 
   if (!wrapped.has_value()) {
-    spdlog::debug("decrypt failed");
+    spdlog::debug("encrypt failed");
+    return;
   }
 
   j = nlohmann::json(wrapped.value());
@@ -243,24 +229,14 @@ void server_session_base<SocketType>::handle_read_confirmation(
     return;
   }
 
-  auto optional_json = protocol::get_json_from_message(message);
+  const auto decrypted_message = protocol::get_decrypted_message(message, public_key_, crypto_handler_);
 
-  if (!optional_json.has_value()) {
+  if (!decrypted_message.has_value()) {
+    spdlog::debug("Error during read_confirmation.");
     return;
   }
 
-  const auto& wrapper = optional_json.value().get<crypto::encryption_wrapper>();
-
-  auto decrypted = crypto_handler_.decrypt(public_key_, wrapper);
-
-  if (!decrypted.has_value()) {
-    spdlog::debug("decryption failed");
-    return;
-  }
-
-  nlohmann::json j = nlohmann::json::parse(
-      std::string(reinterpret_cast<char*>(decrypted.value().cipher_text.data()),
-                  decrypted.value().cipher_text.size()));
+  nlohmann::json j = nlohmann::json::parse(decrypted_message.value());
 
   if (j.at("type") != "accepted") {
     spdlog::debug("begin transmission wasnt confirmed. aborting");
