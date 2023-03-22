@@ -1,7 +1,6 @@
 #include <ifaddrs.h>
 #include <sys/types.h>
 
-#include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <boost/program_options.hpp>
 #include <iostream>
