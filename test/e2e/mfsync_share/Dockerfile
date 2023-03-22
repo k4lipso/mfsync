@@ -3,10 +3,11 @@ FROM debian:bookworm
 #update system and install necessary packages
 RUN apt-get update
 RUN apt-get upgrade -y
-RUN apt-get install cmake libspdlog-dev openssl libboost1.81-all-dev cmake g++-12 libssl-dev git -y
+RUN apt-get install cmake libspdlog-dev openssl libboost-all-dev cmake g++ libssl-dev git libcrypto++-dev libcrypto++-utils libcrypto++  -y
 
 #prepare file structure
 RUN mkdir /mfsync
+RUN mkdir /mfsync/cmake
 RUN mkdir /mfsync/lib
 RUN mkdir /mfsync/src
 RUN mkdir /mfsync/build
@@ -18,6 +19,7 @@ RUN mkdir /test_data/combined
 
 ADD CMakeLists.txt /mfsync/
 COPY ./include /mfsync/include/
+COPY ./cmake /mfsync/cmake/
 COPY ./src /mfsync/src/
 
 #actually build mfsync
