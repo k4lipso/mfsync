@@ -24,7 +24,9 @@ server_session::server_session(boost::asio::ip::tcp::socket socket,
                                mfsync::file_handler& handler,
                                mfsync::crypto::crypto_handler& crypto_handler)
     : server_session_base<boost::asio::ip::tcp::socket>(
-          std::move(socket), handler, crypto_handler) {}
+          std::move(socket), handler, crypto_handler) {
+    port_ = socket_.local_endpoint().port();
+}
 
 server_tls_session::server_tls_session(
     boost::asio::ssl::stream<boost::asio::ip::tcp::socket> socket,
@@ -32,7 +34,9 @@ server_tls_session::server_tls_session(
     mfsync::crypto::crypto_handler& crypto_handler)
     : server_session_base<
           boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>(
-          std::move(socket), handler, crypto_handler) {}
+          std::move(socket), handler, crypto_handler) {
+    port_ = socket_.lowest_layer().local_endpoint().port();
+}
 
 void server_session::start() { read(); }
 
@@ -92,7 +96,8 @@ void server_session_base<SocketType>::handle_read_header(
     }
 
     if (type != protocol::type::FILE) {
-        spdlog::debug("received request with wrong type: {}", type);
+        spdlog::debug("received request with wrong type: {}",
+                      static_cast<int>(type));
         return;
     }
 
@@ -145,7 +150,7 @@ void server_session_base<SocketType>::respond_encrypted(
         message_ = protocol::wrap_with_header(j.dump());
     } else {
         auto msg = protocol::create_message_from_file_info(
-            file_handler_.get_stored_files(), mfsync::protocol::TCP_PORT);
+            file_handler_.get_stored_files(), port_);
 
         auto wrapper = crypto_handler_.encrypt(pub_key, msg);
 
