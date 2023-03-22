@@ -59,7 +59,8 @@ int main(int argc, char** argv) {
 
   description.add_options()("help,h", "Display help message")(
       "verbose,v", "Show debug logs")("version", "print version")(
-      "public_key", "print public key")(
+      "list-hosts", "print available hosts and their keys")(
+      "public-key", "print public key")(
       "trace,t", "Show sent and received multicast messages")(
       "port,p", po::value<unsigned short>(),
       "Manual specify tcp port to listen on. If not specified using default "
@@ -144,12 +145,13 @@ int main(int argc, char** argv) {
       return -1;
     }
 
-    if (vm.count("public_key")) {
+    if (vm.count("public-key")) {
       spdlog::set_pattern(std::string{mfsync::protocol::MFSYNC_LOG_PREFIX} +
                           "%v");
       spdlog::info("{}", public_key);
       return 0;
     }
+
 
     spdlog::debug("{}", public_key);
 
@@ -165,7 +167,10 @@ int main(int argc, char** argv) {
       return 0;
     }
 
-    const auto mode = misc::get_mode(vm["mode"].as<std::string>());
+
+    bool list_hosts = vm.count("list-hosts");
+
+    const auto mode = list_hosts ? operation_mode::FETCH : misc::get_mode(vm["mode"].as<std::string>());
 
     std::unique_ptr<mfsync::filetransfer::progress_handler> progress_handler =
         std::make_unique<mfsync::filetransfer::progress_handler>();
@@ -404,7 +409,14 @@ int main(int argc, char** argv) {
     }
 
     if (mode == operation_mode::FETCH) {
-      file_handler.print_availables(true);
+      if(list_hosts)
+      {
+        fetcher->list_hosts(true);
+      }
+      else
+      {
+        file_handler.print_availables(true);
+      }
     }
 
     std::vector<std::thread> workers;

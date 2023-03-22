@@ -69,7 +69,7 @@ bool server::start_listening(uint16_t port)
   }
   catch (std::exception& e)
   {
-    spdlog::info("Port {} already in use, mfsync will not be able to send files. Use '--port' to specify a different port", port);
+    spdlog::error("Port {} already in use, mfsync will not be able to send files. Use '--port' to specify a different port", port);
     return false;
   }
 
