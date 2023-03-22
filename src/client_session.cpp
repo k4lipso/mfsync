@@ -31,7 +31,7 @@ template <typename SocketType>
 void client_encrypted_session<SocketType>::initialize_communication() {
     message_ =
         protocol::create_file_list_message(crypto_handler_.get_public_key());
-    spdlog::debug("Sending message: {}", message_);
+    spdlog::trace("Sending message: {}", message_);
 
     async_write(socket_, boost::asio::buffer(message_.data(), message_.size()),
                 [me = this->shared_from_this()](
@@ -71,7 +71,7 @@ void client_encrypted_session<SocketType>::handle_read_encrypted_response(
 
     stream_buffer_.consume(bytes_transferred);
 
-    spdlog::debug("Received encrypted response: {}", response_message);
+    spdlog::trace("Received encrypted response: {}", response_message);
 
     if (protocol::get_message_type(response_message) ==
         protocol::type::DENIED) {
@@ -80,68 +80,21 @@ void client_encrypted_session<SocketType>::handle_read_encrypted_response(
         return;
     }
 
-    auto optional_json = protocol::get_json_from_message(response_message);
+    const auto decrypted_message = protocol::get_decrypted_message(response_message,
+                                                                   host_info_.public_key,
+                                                                   crypto_handler_);
 
-    if (!optional_json.has_value()) {
+    if (!decrypted_message.has_value()) {
+        spdlog::debug("Error on handle_read_file_request_response: decryption failed");
         return;
     }
 
-    const auto& wrapper =
-        optional_json.value().get<crypto::encryption_wrapper>();
-
-    auto decrypted = crypto_handler_.decrypt(host_info_.public_key, wrapper);
-
-    if (!decrypted.has_value()) {
-        spdlog::debug("decryption failed");
-        return;
-    }
-
-    auto available = mfsync::protocol::get_available_files_from_message(
-        std::string(
-            reinterpret_cast<char*>(decrypted.value().cipher_text.data()),
-            decrypted.value().cipher_text.size()),
+    auto available = mfsync::protocol::get_available_files_from_message(decrypted_message.value(),
         socket_.remote_endpoint(), host_info_.public_key);
 
     if (available.has_value()) {
         file_handler_.add_available_files(std::move(available.value()));
     }
-
-    // if(response_message != protocol::create_begin_transmission_message())
-    //{
-    //   spdlog::debug("Server returned with error: {}", response_message);
-    //   handle_error();
-    //   return;
-    // }
-
-    // message_ = std::move(response_message);
-    // spdlog::debug("Sending response: {}", message_);
-
-    // bytes_written_to_requested_ = requested_.offset;
-
-    // async_write(socket_,
-    //   boost::asio::buffer(message_.data(), message_.size()),
-    //   [me = this->shared_from_this()](boost::system::error_code const &ec,
-    //   std::size_t) {
-    //     if(!ec)
-    //     {
-    //       spdlog::debug("Done sending response");
-
-    //      if(me->bar_ == nullptr)
-    //      {
-    //        me->bar_ =
-    //        me->progress_->create_file_progress(me->requested_.file_info) ;
-    //        me->bar_->status = progress::STATUS::DOWNLOADING;
-    //      }
-
-    //      me->readbuf_.resize(me->requested_.chunksize);
-    //      me->read_file_chunk();
-    //    }
-    //    else
-    //    {
-    //      spdlog::debug("async write failed: {}", ec.message());
-    //      me->handle_error();
-    //    }
-    //  });
 }
 
 void client_encrypted_file_list::start_request() {
@@ -380,25 +333,15 @@ void client_session_base<SocketType>::handle_read_file_request_response(
             return;
         }
 
-        auto optional_json = protocol::get_json_from_message(response_message);
-
-        if (!optional_json.has_value()) {
-            return;
+        auto decrypted_message = protocol::get_decrypted_message(response_message,
+                                                                 pub_key_,
+                                                                 crypto_handler_);
+        if (!decrypted_message.has_value()) {
+          spdlog::debug("error during hanlde_read_file_request_response");
+          return;
         }
 
-        const auto& wrapper =
-            optional_json.value().get<crypto::encryption_wrapper>();
-
-        auto decrypted = crypto_handler_.decrypt(pub_key_, wrapper);
-
-        if (!decrypted.has_value()) {
-            spdlog::debug("decryption failed");
-            return;
-        }
-
-        nlohmann::json j = nlohmann::json::parse(std::string(
-            reinterpret_cast<char*>(decrypted.value().cipher_text.data()),
-            decrypted.value().cipher_text.size()));
+        nlohmann::json j = nlohmann::json::parse(decrypted_message.value());
 
         if (j.at("type") != "accepted") {
             spdlog::debug("Server returned with error: {}", response_message);
