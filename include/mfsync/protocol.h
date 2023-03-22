@@ -4,7 +4,9 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <tuple>
 
+#include "mfsync/crypto.h"
 #include "mfsync/file_handler.h"
 
 namespace mfsync::protocol
@@ -52,6 +54,10 @@ namespace mfsync::protocol
                                             unsigned short port);
   std::vector<std::string> create_messages_from_file_info(const file_handler::stored_files& file_infos,
                                                           unsigned short port);
+
+	std::tuple<bool, std::string, crypto::encryption_wrapper> decompose_message(const std::string& message);
+	std::optional<std::string> get_decrypted_message(const std::string& message, const std::string& public_key, crypto::crypto_handler& handler);
+	std::optional<std::string> get_decrypted_message(const std::string& message, crypto::crypto_handler& handler);
 
   std::optional<file_handler::available_files>
   get_available_files_from_message(const std::string& message,

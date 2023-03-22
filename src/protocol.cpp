@@ -245,6 +245,81 @@ std::vector<std::string> create_messages_from_file_info(const file_handler::stor
   return result;
 }
 
+std::tuple<bool, std::string, crypto::encryption_wrapper> decompose_message(const std::string& message)
+{
+  const auto optional_json = protocol::get_json_from_message(message);
+  if (!optional_json.has_value()) {
+    return std::make_tuple(false, std::string{}, crypto::encryption_wrapper{});
+  }
+
+  try
+  {
+    const auto& wrapper_str =
+        optional_json.value().at("message").get<std::string>();
+
+    const auto wrapper = nlohmann::json::parse(wrapper_str).get<crypto::encryption_wrapper>();
+
+    const auto public_key = optional_json.value().at("public_key").get<std::string>();
+
+    return std::make_tuple(true, public_key, wrapper);
+  }
+  catch(nlohmann::json::parse_error& er)
+  {
+    spdlog::debug("Json Parse Error: {}", er.what());
+    return std::make_tuple(false, std::string{}, crypto::encryption_wrapper{});
+  }
+
+}
+
+std::optional<std::string> get_decrypted_message(const std::string& message, crypto::crypto_handler& handler)
+{
+  auto [no_error, public_key, wrapper] = decompose_message(message);
+
+  if(!no_error)
+  {
+    return std::nullopt;
+  }
+
+  const auto decrypted =  handler.decrypt(public_key, wrapper);
+
+  if(!decrypted.has_value())
+  {
+    return std::nullopt;
+  }
+
+  return std::string(reinterpret_cast<const char*>(decrypted.value().cipher_text.data()),
+                     decrypted.value().cipher_text.size());
+}
+
+std::optional<std::string> get_decrypted_message(const std::string& message, const std::string& public_key, crypto::crypto_handler& handler)
+{
+  try
+  {
+    const auto optional_json = protocol::get_json_from_message(message);
+    if(!optional_json.has_value())
+    {
+      return std::nullopt;
+    }
+
+    const auto wrapper = optional_json.value().get<crypto::encryption_wrapper>();
+    const auto decrypted =  handler.decrypt(public_key, wrapper);
+
+    if(!decrypted.has_value())
+    {
+      return std::nullopt;
+    }
+
+    return std::string(reinterpret_cast<const char*>(decrypted.value().cipher_text.data()),
+                       decrypted.value().cipher_text.size());
+  }
+  catch(nlohmann::json::parse_error& er)
+  {
+    spdlog::debug("Json Parse Error: {}", er.what());
+    return std::nullopt;
+  }
+}
+
+
 std::optional<file_handler::available_files>
 get_available_files_from_message(const std::string& message,
                                  const boost::asio::ip::tcp::endpoint& endpoint,
