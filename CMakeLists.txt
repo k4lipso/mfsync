@@ -79,7 +79,7 @@ if(USE_SUBMODULES)
   FetchContent_Declare(
     libindicators
     GIT_REPOSITORY https://github.com/p-ranav/indicators
-    GIT_TAG        a5bc05f32a9c719535054b7fa5306ce5c8d055d8
+    GIT_TAG        5050a8887786fe279a7ce47841cc805ef7e88326
     GIT_SHALLOW TRUE
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
