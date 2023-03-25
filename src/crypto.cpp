@@ -96,8 +96,8 @@ encryption_wrapper encryption_wrapper::create(
   enc.SetKeyWithIV(secret, secret.size(), IV, IV.size());
   enc.EncryptAndAuthenticate(result.cipher_text.data(), result.mac.data(),
                              result.mac.size(), IV, IV.size(),
-                             (const byte*)result.aad.data(), result.aad.size(),
-                             (const byte*)plain.data(), plain.size());
+                             reinterpret_cast<const byte*>(result.aad.data()), result.aad.size(),
+                             reinterpret_cast<const byte*>(plain.data()), plain.size());
   return result;
 }
 
@@ -120,7 +120,7 @@ std::optional<encryption_wrapper> encryption_wrapper::decrypt(
   dec.SetKeyWithIV(secret, secret.size(), IV, IV.size());
   if (dec.DecryptAndVerify(
           result.cipher_text.data(), result.mac.data(), result.mac.size(), IV,
-          IV.size(), (const byte*)wrapper.aad.data(), wrapper.aad.size(),
+          IV.size(), reinterpret_cast<const byte*>(wrapper.aad.data()), wrapper.aad.size(),
           wrapper.cipher_text.data(), wrapper.cipher_text.size())) {
     return result;
   }
@@ -214,15 +214,11 @@ void crypto_handler::encrypt_file_to_buf(const std::string& pub_key,
   ChaCha20Poly1305::Encryption enc;
   enc.SetKeyWithIV(shared.key, shared.key.size(), IV, IV.size());
 
-  // todo: may needs 'new' and then filter takes care of delete
   std::vector<unsigned char> v;
   CryptoPP::FileSource source(ifstream, false);
-  // CryptoPP::FileSource source(ifstream, false);
   CryptoPP::MeterFilter meter;
   CryptoPP::AuthenticatedEncryptionFilter filter(enc, nullptr, false, TAG_SIZE);
   CryptoPP::VectorSink sink(out);
-  // CryptoPP::FileSink sink(std::string(file_name +
-  // ".encrypted").c_str());
 
   source.Attach(new Redirector(filter));
   filter.Attach(new Redirector(meter));
@@ -237,6 +233,7 @@ void crypto_handler::encrypt_file_to_buf(const std::string& pub_key,
   }
   // todo;: maybe needed on eof
   // filter.MessageEnd();
+  filter.Flush((out.size() < block_size));
 }
 
 void crypto_handler::decrypt_file_to_buf(const std::string& pub_key,
@@ -258,12 +255,10 @@ void crypto_handler::decrypt_file_to_buf(const std::string& pub_key,
   dec.SetKeyWithIV(shared.key, shared.key.size(), IV, IV.size());
 
   in.resize(block_size);
-  // todo: may needs 'new' and then filter takes care of delete
-  // CryptoPP::FileSource source(file_name.c_str(), false);
   CryptoPP::VectorSource source(in, false);
   CryptoPP::MeterFilter meter;
   CryptoPP::AuthenticatedDecryptionFilter filter(
-      dec, nullptr, AuthenticatedDecryptionFilter::DEFAULT_FLAGS, TAG_SIZE);
+      dec, nullptr, AuthenticatedDecryptionFilter::DEFAULT_FLAGS);
   CryptoPP::FileSink sink(ofstream);
 
   source.Attach(new Redirector(filter));
@@ -272,10 +267,10 @@ void crypto_handler::decrypt_file_to_buf(const std::string& pub_key,
 
   if (pump_all) {
     source.PumpAll();
-    [[maybe_unused]] bool b = filter.GetLastResult();
   } else {
     source.Pump(block_size);
   }
+
   filter.Flush(true);
 }
 
