@@ -198,6 +198,10 @@ void crypto_handler::encrypt_file_to_buf(const std::string& pub_key,
   //  encryption_wrapper result;
   //  result.cipher_text.resize(plain.size());
   //  result.aad = std::move(arbitary_data);
+  if (!trusted_keys_.contains(pub_key)) {
+    spdlog::debug("Tried encrypting file to buf with non trusted pub key");
+    return;
+  }
 
   const int TAG_SIZE = -1;
   static auto IV = encryption_wrapper::get_nonce_from_count(get_count(pub_key));
@@ -249,6 +253,11 @@ void crypto_handler::decrypt_file_to_buf(const std::string& pub_key,
   // encryption_wrapper result;
   // result.cipher_text.resize(plain.size());
   // result.aad = std::move(arbitary_data);
+
+  if (!trusted_keys_.contains(pub_key)) {
+    spdlog::debug("Tried decrypting file to buf with non trusted pub key");
+    return;
+  }
 
   const int TAG_SIZE = -1;
   static auto IV = encryption_wrapper::get_nonce_from_count(get_count(pub_key));

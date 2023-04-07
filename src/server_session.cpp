@@ -100,24 +100,18 @@ void server_session_base<SocketType>::handle_read_header(
     return;
   }
 
-  const auto [no_error, pub_key, wrapper] = protocol::decompose_message(message);
-  const auto file_str = protocol::get_decrypted_message(message, crypto_handler_);
-
-  if (!file_str.has_value()) {
-    spdlog::debug("could not decrypt message");
-    return;
-  }
-
-  public_key_ = pub_key;
-  const auto file_j = protocol::get_json_from_message(file_str.value());
-  const auto file = std::make_optional(file_j.value().get<requested_file>());
-  if (!file.has_value()) {
+  const auto result = protocol::converter<requested_file>::from_message(
+      message, crypto_handler_);
+  if (!result.has_value()) {
     spdlog::debug("Couldnt create requested_file from message: {}", message);
     return;
   }
 
-  if (file_handler_.is_stored(file.value().file_info)) {
-    requested_ = file.value();
+  const auto& [file, pub_key] = result.value();
+  public_key_ = pub_key;
+
+  if (file_handler_.is_stored(file.file_info)) {
+    requested_ = file;
     send_confirmation();
   } else {
     reply_with_error("file doesnt exists");
@@ -127,23 +121,8 @@ void server_session_base<SocketType>::handle_read_header(
 template <typename SocketType>
 void server_session_base<SocketType>::respond_encrypted(
     const std::string& pub_key) {
-  if (!crypto_handler_.trust_key(pub_key)) {
-    nlohmann::json j;
-    j["type"] = "denied";
-    message_ = protocol::wrap_with_header(j.dump());
-  } else {
-    auto msg = protocol::create_message_from_file_info(
-        file_handler_.get_stored_files(), port_);
-
-    auto wrapper = crypto_handler_.encrypt(pub_key, msg);
-
-    if (!wrapper.has_value()) {
-      spdlog::debug("encrypt failed for {}", pub_key);
-    }
-
-    auto j = nlohmann::json(wrapper.value());
-    message_ = protocol::wrap_with_header(j.dump());
-  }
+  message_ = protocol::converter<file_handler::available_files>::to_message(
+      file_handler_, port_, pub_key, crypto_handler_);
 
   spdlog::debug("Sending response: {}", message_);
   async_write(socket_, boost::asio::buffer(message_.data(), message_.size()),
@@ -160,18 +139,8 @@ void server_session_base<SocketType>::respond_encrypted(
 
 template <typename SocketType>
 void server_session_base<SocketType>::send_confirmation() {
-  nlohmann::json j;
-  j["type"] = "accepted";
-
-  auto wrapped = crypto_handler_.encrypt(public_key_, j.dump());
-
-  if (!wrapped.has_value()) {
-    spdlog::debug("encrypt failed");
-    return;
-  }
-
-  j = nlohmann::json(wrapped.value());
-  message_ = protocol::wrap_with_header(j.dump());
+  message_ =
+      protocol::converter<bool>::to_message(true, public_key_, crypto_handler_);
 
   spdlog::debug("Sending response: {}", message_);
   async_write(socket_, boost::asio::buffer(message_.data(), message_.size()),
@@ -224,21 +193,10 @@ void server_session_base<SocketType>::handle_read_confirmation(
   std::string message(boost::asio::buffers_begin(bufs),
                       boost::asio::buffers_begin(bufs) + bytes_transferred);
 
-  if (protocol::get_message_type(message) == protocol::type::DENIED) {
-    spdlog::debug("file list request got denied by host {}.", public_key_);
-    return;
-  }
+  const auto got_accepted = protocol::converter<bool>::from_message(
+      message, public_key_, crypto_handler_);
 
-  const auto decrypted_message = protocol::get_decrypted_message(message, public_key_, crypto_handler_);
-
-  if (!decrypted_message.has_value()) {
-    spdlog::debug("Error during read_confirmation.");
-    return;
-  }
-
-  nlohmann::json j = nlohmann::json::parse(decrypted_message.value());
-
-  if (j.at("type") != "accepted") {
+  if (!got_accepted.has_value() || !got_accepted.value()) {
     spdlog::debug("begin transmission wasnt confirmed. aborting");
     spdlog::debug("message was: {}", message);
     return;
