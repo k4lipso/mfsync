@@ -75,3 +75,138 @@ namespace mfsync::protocol
                                    const std::string& pub_key = "");
 }
 
+template <typename Result_t>
+class converter {};
+
+template <>
+class converter<requested_file> {
+ public:
+  static std::string to_message(const requested_file& requested,
+                                const std::string& pub_key,
+                                mfsync::crypto::crypto_handler& handler) {
+    auto tmp_msg = protocol::create_message_from_requested_file(requested);
+    auto wrapper = handler.encrypt(pub_key, tmp_msg);
+
+    if (!wrapper.has_value()) {
+      spdlog::debug("encrypt failed for {}", pub_key);
+      nlohmann::json j;
+      j["type"] = "denied";
+      return protocol::wrap_with_header(j.dump());
+    }
+
+    auto j = nlohmann::json(wrapper.value());
+    return protocol::create_file_message(handler.get_public_key(), j.dump());
+  }
+
+  // returns pair of requested_file and pub_key of sender
+  static std::optional<std::pair<requested_file, std::string>> from_message(
+      const std::string& buf, mfsync::crypto::crypto_handler& handler) {
+    const auto [no_error, pub_key, wrapper] = protocol::decompose_message(buf);
+    const auto file_str = protocol::get_decrypted_message(buf, handler);
+
+    if (!file_str.has_value()) {
+      spdlog::debug("converter: could not decrypt message");
+      return std::nullopt;
+    }
+
+    const auto file_j = protocol::get_json_from_message(file_str.value());
+    return std::make_pair(file_j.value().get<requested_file>(), pub_key);
+  }
+};
+
+template <>
+class converter<bool> {
+ public:
+  static std::optional<bool> from_message(
+      const std::string& buf, const std::string& pub_key,
+      mfsync::crypto::crypto_handler& handler) {
+    if (protocol::get_message_type(buf) == protocol::type::DENIED) {
+      return std::nullopt;
+    }
+
+    auto decrypted_message =
+        protocol::get_decrypted_message(buf, pub_key, handler);
+
+    if (!decrypted_message.has_value()) {
+      return std::nullopt;
+    }
+
+    nlohmann::json j = nlohmann::json::parse(decrypted_message.value());
+    if (j.at("type") != "accepted") {
+      return false;
+    }
+
+    return true;
+  }
+
+  static std::string to_message(bool value, const std::string& pub_key,
+                                mfsync::crypto::crypto_handler& handler) {
+    nlohmann::json j;
+    j["type"] = value ? "accepted" : "denied";
+
+    auto wrapped = handler.encrypt(pub_key, j.dump());
+
+    if (!wrapped.has_value()) {
+      j["type"] = "denied";
+      return j.dump();
+    }
+
+    j = nlohmann::json(wrapped.value());
+    return protocol::wrap_with_header(j.dump());
+  }
+};
+
+template <>
+class converter<mfsync::file_handler::available_files> {
+ public:
+  static std::string to_message(mfsync::file_handler& file_handler,
+                                unsigned short port, const std::string& pub_key,
+                                mfsync::crypto::crypto_handler& handler) {
+    std::string result;
+    if (!handler.trust_key(pub_key)) {
+      nlohmann::json j;
+      j["type"] = "denied";
+      return protocol::wrap_with_header(j.dump());
+    }
+
+    auto msg = protocol::create_message_from_file_info(
+        file_handler.get_stored_files(), port);
+
+    auto wrapper = handler.encrypt(pub_key, msg);
+
+    if (!wrapper.has_value()) {
+      spdlog::debug("encrypt failed for {}", pub_key);
+      nlohmann::json j;
+      j["type"] = "denied";
+      return protocol::wrap_with_header(j.dump());
+    }
+
+    auto j = nlohmann::json(wrapper.value());
+    return protocol::wrap_with_header(j.dump());
+  }
+
+  static std::optional<mfsync::file_handler::available_files> from_message(
+      const std::string& buf, const std::string& pub_key,
+      mfsync::crypto::crypto_handler& handler,
+      const boost::asio::ip::tcp::endpoint& address) {
+    if (mfsync::protocol::get_message_type({buf.data(), buf.size()}) ==
+        mfsync::protocol::type::DENIED) {
+      spdlog::debug("file list request got denied by host {}.", pub_key);
+      return std::nullopt;
+    }
+
+    const auto decrypted_message =
+        mfsync::protocol::get_decrypted_message(buf, pub_key, handler);
+
+    if (!decrypted_message.has_value()) {
+      spdlog::debug(
+          "Error on handle_read_file_request_response: decryption failed");
+      return std::nullopt;
+    }
+
+    return mfsync::protocol::get_available_files_from_message(
+        decrypted_message.value(), address, pub_key);
+  }
+};
+
+}  // namespace mfsync::protocol
