@@ -202,11 +202,6 @@ void crypto_handler::encrypt_file_to_buf(const std::string& pub_key,
                                          std::ifstream& ifstream,
                                          size_t block_size,
                                          std::vector<unsigned char>& out) {
-  // void encrypt_file(const std::string& pub_key, std::string file_name)
-  // {
-  //  encryption_wrapper result;
-  //  result.cipher_text.resize(plain.size());
-  //  result.aad = std::move(arbitary_data);
   if (!trusted_keys_.contains(pub_key)) {
     spdlog::debug("Tried encrypting file to buf with non trusted pub key");
     return;
@@ -233,9 +228,6 @@ void crypto_handler::encrypt_file_to_buf(const std::string& pub_key,
   filter.Attach(new Redirector(meter));
   meter.Attach(new Redirector(sink));
 
-  lword processed = 0;
-
-  // while (!EndOfFile(source) && !source.SourceExhausted()) {
   source.Pump(block_size);
 
   if (out.size() < block_size) {
@@ -243,13 +235,6 @@ void crypto_handler::encrypt_file_to_buf(const std::string& pub_key,
   } else {
     filter.Flush(false);
   }
-
-  processed += block_size;
-
-  if (processed % (1024 * 1024 * 10) == 0)
-    std::cout << "Processed: " << meter.GetTotalBytes() << std::endl;
-  //}
-
   // todo;: maybe needed on eof
   // filter.MessageEnd();
 }
@@ -259,10 +244,6 @@ void crypto_handler::decrypt_file_to_buf(const std::string& pub_key,
                                          size_t block_size,
                                          std::vector<uint8_t>& in,
                                          bool pump_all) {
-  // encryption_wrapper result;
-  // result.cipher_text.resize(plain.size());
-  // result.aad = std::move(arbitary_data);
-
   if (!trusted_keys_.contains(pub_key)) {
     spdlog::debug("Tried decrypting file to buf with non trusted pub key");
     return;
@@ -289,10 +270,6 @@ void crypto_handler::decrypt_file_to_buf(const std::string& pub_key,
   filter.Attach(new Redirector(meter));
   meter.Attach(new Redirector(sink));
 
-  lword processed = 0;
-
-  // while (!EndOfFile(source) && !source.SourceExhausted()) {
-  // source.Pump(block_size - TAG_SIZE);
   if (pump_all) {
     source.PumpAll();
     [[maybe_unused]] bool b = filter.GetLastResult();
@@ -300,15 +277,6 @@ void crypto_handler::decrypt_file_to_buf(const std::string& pub_key,
     source.Pump(block_size);
   }
   filter.Flush(true);
-
-  processed += block_size;
-
-  if (processed % (1024 * 1024 * 10) == 0)
-    std::cout << "Processed: " << meter.GetTotalBytes() << std::endl;
-  // sink.Flush(true);
-  //}
-
-  // filter.MessageEnd();
 }
 
 std::optional<encryption_wrapper> crypto_handler::decrypt(
