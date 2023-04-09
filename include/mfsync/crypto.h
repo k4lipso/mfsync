@@ -40,6 +40,12 @@ struct key_wrapper {
   x25519Wrapper ecdh;
   SecByteBlock private_key;
   SecByteBlock public_key;
+
+ private:
+  static std::optional<key_wrapper> load_from_file(
+      const std::filesystem::path& path);
+  static void save_to_file(const key_wrapper& key,
+                           const std::filesystem::path& path);
 };
 
 struct encryption_wrapper {

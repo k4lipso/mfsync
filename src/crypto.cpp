@@ -12,47 +12,56 @@
 
 namespace mfsync::crypto {
 key_wrapper key_wrapper::create(const std::filesystem::path& path) {
-  key_wrapper result;
-  // somehow ecdh.Load(..) does not initialize the keys
-  // therefore get_shared_secret fails later on
-  if (std::filesystem::exists(path)) {
-    FileSource fsA{path.c_str(), true};
-    result.ecdh.Load(fsA);
+  const auto loaded_key = load_from_file(path);
 
-    AutoSeededRandomPool prng;
-    bool valid = result.ecdh.Validate(prng, 3);
-    if (valid == false) {
-      spdlog::error("Invalid private key");
-    }
-
-    result.private_key.Assign(result.ecdh.GetPrivateKey(),
-                              result.ecdh.PrivateKeyLength());
-
-    result.public_key.Assign(result.ecdh.GetPublicKey(),
-                             result.ecdh.PublicKeyLength());
-
-    // result.public_key.Assign(
-    //     dynamic_cast<ed25519PrivateKey*>(&result.ecdh)->GetPublicKeyBytePtr(),
-    //     result.ecdh.PublicKeyLength());
-    //  result.private_key =
-    //  dynamic_cast<ed25519PrivateKey*>(&result.ecdh)->GetPrivateKeyBytePtr();
-    //  result.public_key =
-    //  dynamic_cast<ed25519PrivateKey*>(&result.ecdh)->GetPublicKeyBytePtr();
-
-  } else {
-    FileSink filesinkA(path.c_str());
-    result = key_wrapper::create();
-
-    result.private_key.Assign(result.ecdh.GetPrivateKey(),
-                              result.ecdh.PrivateKeyLength());
-
-    result.public_key.Assign(result.ecdh.GetPublicKey(),
-                             result.ecdh.PublicKeyLength());
-
-    result.ecdh.Save(filesinkA);
+  if (loaded_key.has_value()) {
+    return loaded_key.value();
   }
 
+  auto result = key_wrapper::create();
+  result.private_key.Assign(result.ecdh.GetPrivateKey(),
+                            result.ecdh.PrivateKeyLength());
+  result.public_key.Assign(result.ecdh.GetPublicKey(),
+                           result.ecdh.PublicKeyLength());
+  save_to_file(result, path);
+
   return result;
+}
+
+std::optional<key_wrapper> key_wrapper::load_from_file(
+    const std::filesystem::path& path) {
+  if (!std::filesystem::exists(path)) {
+    return std::nullopt;
+  }
+
+  FileSource fsA{path.c_str(), true};
+
+  key_wrapper result;
+
+  // somehow ecdh.Load(..) does not initialize the keys
+  // therefore get_shared_secret fails later on
+  result.ecdh.Load(fsA);
+
+  AutoSeededRandomPool prng;
+  bool valid = result.ecdh.Validate(prng, 3);
+  if (valid == false) {
+    spdlog::error("Invalid private key");
+    return std::nullopt;
+  }
+
+  result.private_key.Assign(result.ecdh.GetPrivateKey(),
+                            result.ecdh.PrivateKeyLength());
+
+  result.public_key.Assign(result.ecdh.GetPublicKey(),
+                           result.ecdh.PublicKeyLength());
+
+  return result;
+}
+
+void key_wrapper::save_to_file(const key_wrapper& key,
+                               const std::filesystem::path& path) {
+  FileSink filesinkA(path.c_str());
+  key.ecdh.Save(filesinkA);
 }
 
 key_wrapper key_wrapper::create() {
