@@ -11,14 +11,14 @@
 #include "spdlog/spdlog.h"
 
 namespace mfsync::crypto {
-key_wrapper key_wrapper::create(const std::filesystem::path& path) {
+key_pair key_pair::create(const std::filesystem::path& path) {
   const auto loaded_key = load_from_file(path);
 
   if (loaded_key.has_value()) {
     return loaded_key.value();
   }
 
-  auto result = key_wrapper::create();
+  auto result = key_pair::create();
   result.private_key.Assign(result.ecdh.GetPrivateKey(),
                             result.ecdh.PrivateKeyLength());
   result.public_key.Assign(result.ecdh.GetPublicKey(),
@@ -28,7 +28,7 @@ key_wrapper key_wrapper::create(const std::filesystem::path& path) {
   return result;
 }
 
-std::optional<key_wrapper> key_wrapper::load_from_file(
+std::optional<key_pair> key_pair::load_from_file(
     const std::filesystem::path& path) {
   if (!std::filesystem::exists(path)) {
     return std::nullopt;
@@ -36,7 +36,7 @@ std::optional<key_wrapper> key_wrapper::load_from_file(
 
   FileSource fsA{path.c_str(), true};
 
-  key_wrapper result;
+  key_pair result;
 
   // somehow ecdh.Load(..) does not initialize the keys
   // therefore get_shared_secret fails later on
@@ -58,20 +58,20 @@ std::optional<key_wrapper> key_wrapper::load_from_file(
   return result;
 }
 
-void key_wrapper::save_to_file(const key_wrapper& key,
-                               const std::filesystem::path& path) {
+void key_pair::save_to_file(const key_pair& key,
+                            const std::filesystem::path& path) {
   FileSink filesinkA(path.c_str());
   key.ecdh.Save(filesinkA);
 }
 
-key_wrapper key_wrapper::create() {
+key_pair key_pair::create() {
   AutoSeededRandomPool rnd_pool;
-  key_wrapper result{x25519Wrapper{rnd_pool}};
+  key_pair result{x25519Wrapper{rnd_pool}};
   result.ecdh.GenerateKeyPair(rnd_pool, result.private_key, result.public_key);
   return result;
 }
 
-std::optional<SecByteBlock> key_wrapper::get_shared_secret(
+std::optional<SecByteBlock> key_pair::get_shared_secret(
     SecByteBlock other_public_key) {
   SecByteBlock shared_key(ecdh.AgreedValueLength());
 
@@ -130,7 +130,7 @@ std::optional<encryption_wrapper> encryption_wrapper::decrypt(
 
 bool crypto_handler::init(const std::filesystem::path& path) {
   std::unique_lock lk{mutex_};
-  key_pair_ = key_wrapper::create(path);
+  key_pair_ = key_pair::create(path);
   return true;
 }
 
