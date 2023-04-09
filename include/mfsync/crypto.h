@@ -26,15 +26,15 @@ class x25519Wrapper : public x25519 {
   const byte* GetPublicKey() { return m_pk.begin(); }
 };
 
-struct key_wrapper {
-  key_wrapper() = default;
-  key_wrapper(x25519Wrapper ecdh_)
+struct key_pair {
+  key_pair() = default;
+  key_pair(x25519Wrapper ecdh_)
       : ecdh(std::move(ecdh_)),
         private_key(ecdh.PrivateKeyLength()),
         public_key(ecdh.PublicKeyLength()) {}
 
-  static key_wrapper create(const std::filesystem::path& path);
-  static key_wrapper create();
+  static key_pair create(const std::filesystem::path& path);
+  static key_pair create();
   std::optional<SecByteBlock> get_shared_secret(SecByteBlock other_public_key);
 
   x25519Wrapper ecdh;
@@ -42,9 +42,9 @@ struct key_wrapper {
   SecByteBlock public_key;
 
  private:
-  static std::optional<key_wrapper> load_from_file(
+  static std::optional<key_pair> load_from_file(
       const std::filesystem::path& path);
-  static void save_to_file(const key_wrapper& key,
+  static void save_to_file(const key_pair& key,
                            const std::filesystem::path& path);
 };
 
@@ -94,7 +94,7 @@ class crypto_handler {
   mutable std::mutex mutex_;
   std::vector<size_t> count_vec_;
 
-  key_wrapper key_pair_;
+  key_pair key_pair_;
 
   bool trust_all_ = true;
   // mapping public key to shared key + nonce count
