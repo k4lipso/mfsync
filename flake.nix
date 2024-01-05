@@ -19,7 +19,7 @@
           };
           enableParallelBuilding = true;
 
-          nativeBuildInputs = [ pkgs.pkgconfig pkgs.cmake pkgs.gnumake ];
+          nativeBuildInputs = [ pkgs.pkg-config pkgs.cmake pkgs.gnumake ];
           depsBuildBuild = [ ];
           buildInputs = [ ];
 
@@ -33,14 +33,14 @@
             inherit pkgs;
             libindicators = libindicators;
             stdenv = pkgs.overrideCC pkgs.stdenv pkgs.gcc;
-            boost = pkgs.boost174;
+            boost = pkgs.boost;
           };
 
           packages.mfsync = import ./derivation.nix {
             pkgs = pkgs;
             libindicators = libindicators;
             stdenv = pkgs.overrideCC pkgs.stdenv pkgs.gcc;
-            boost = pkgs.boost174;
+            boost = pkgs.boost;
           };
 
           apps.mfsync = {
