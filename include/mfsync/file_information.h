@@ -75,7 +75,9 @@ namespace mfsync
 
     if(j.contains("sha256sum"))
     {
-      j.at("sha256sum").get_to(file_info.sha256sum);
+      std::string sha256sum;
+      j.at("sha256sum").get_to(sha256sum);
+      file_info.sha256sum = sha256sum;
     }
   }
 
