@@ -5,7 +5,7 @@ stdenv.mkDerivation {
   name = "mfsync";
   src = ./.;
 
-  nativeBuildInputs = [ pkgconfig cmake gnumake gdb clang clang-tools ];
+  nativeBuildInputs = [ pkg-config cmake gnumake gdb clang clang-tools ];
   depsBuildBuild = [ ];
   buildInputs = [
     libindicators
