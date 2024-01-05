@@ -3,7 +3,7 @@ FROM debian:bookworm
 #update system and install necessary packages
 RUN apt-get update
 RUN apt-get upgrade -y
-RUN apt-get install cmake libspdlog-dev openssl libboost-all-dev cmake g++ libssl-dev git -y
+RUN apt-get install cmake libspdlog-dev openssl libboost1.81-all-dev cmake g++-12 libssl-dev git -y
 
 #prepare file structure
 RUN mkdir /mfsync
