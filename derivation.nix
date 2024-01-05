@@ -7,7 +7,7 @@ stdenv.mkDerivation {
 
   enableParallelBuilding = true;
 
-  nativeBuildInputs = [ pkgs.pkgconfig pkgs.cmake pkgs.gnumake ];
+  nativeBuildInputs = [ pkgs.pkg-config pkgs.cmake pkgs.gnumake ];
   depsBuildBuild = [ ];
   buildInputs = [
     libindicators
