@@ -8,8 +8,9 @@ mfsync is a command line utility enabling file lookup/announcement using multica
 key features:
 - **easy to use!** *you dont need to know any ip address*
 - **end-to-end encrypted** *using ChaCha20Poly1305 authenticated encryption*
+- **stop and go** *File transmissions can be interrupted and are continued any time*
 
-Files that where announced over multicast can then also be retrieved using mfsync. File transmissions can be interrupted and are continued the next time. File transmissions are not done using multicast, they use direct tcp connections instead.
+https://github.com/k4lipso/mfsync/assets/19481640/a570f897-7f79-4415-ac4b-6241f5da3b21
 
 mfsync can operate in four different modes, each fullfilling a different purpose. The four modes are 'share', 'fetch', 'get' and 'sync'. The modes are described below.
 
