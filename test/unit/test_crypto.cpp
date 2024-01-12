@@ -23,8 +23,9 @@ TEST_CASE("crypto base test", "[crypto]") {
   A.init("testA.key");
   B.init("testB.key");
 
-  A.trust_key(B.get_public_key());
-  B.trust_key(A.get_public_key());
+  const auto salt = A.encode(A.generate_salt());
+  A.trust_key(B.get_public_key(), salt);
+  B.trust_key(A.get_public_key(), salt);
 
   std::string test_msg{"This is a test message"};
   std::string aad_msg{"This is unencrypted info"};
