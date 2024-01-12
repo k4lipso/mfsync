@@ -216,8 +216,8 @@ void server_session_base<SocketType>::handle_read_confirmation(
   const auto file_size = ifstream_.tellg();
   ifstream_.seekg(requested_.offset, ifstream_.beg);
 
-  spdlog::debug("Start sending file: {} with size: {}",
-                requested_.file_info.file_name, file_size);
+  //spdlog::debug("Start sending file: {} with size: {}",
+                //requested_.file_info.file_name, file_size);
 
   if (bar_ == nullptr) {
     bar_ = progress_->create_file_progress(requested_.file_info);
