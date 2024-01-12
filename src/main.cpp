@@ -162,12 +162,6 @@ int main(int argc, char** argv) {
       }
     }
 
-    if (!vm.count("mode")) {
-      print_help();
-      return 0;
-    }
-
-
     bool list_hosts = vm.count("list-hosts");
 
     const auto mode = list_hosts ? operation_mode::FETCH : misc::get_mode(vm["mode"].as<std::string>());
