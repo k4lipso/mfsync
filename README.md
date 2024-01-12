@@ -3,8 +3,12 @@
 
 ![Build](https://github.com/k4lipso/mfsync/actions/workflows/cmake.yml/badge.svg)
 
+mfsync is a command line utility enabling file lookup/announcement using multicast communication. This always works on the local subnet and can work over wider areas if multicast routing is enabled.
 
-mfsync is a command line utility enabling file lookup/announcement using multicast communication. This always works on the local subnet and can work over wider areas if multicast routing is enabled. 
+key features:
+- **easy to use!** *you dont need to know any ip address*
+- **end-to-end encrypted** *using ChaCha20Poly1305 authenticated encryption*
+
 Files that where announced over multicast can then also be retrieved using mfsync. File transmissions can be interrupted and are continued the next time. File transmissions are not done using multicast, they use direct tcp connections instead.
 
 mfsync can operate in four different modes, each fullfilling a different purpose. The four modes are 'share', 'fetch', 'get' and 'sync'. The modes are described below.
@@ -33,13 +37,13 @@ mfsync fetch
   * requests names of all available files in the network and prints them to stdout
 
 ### mfsync get
-'mfsync get' retreives all specified files. The files are specified by their sha256sum which can be seen when using 'mfsync fetch'. If no files are specified all announced files will be retreived.
+'mfsync get' retreives all specified files. The files are specified by their filename which can be seen when using 'mfsync fetch'. If no files are specified all announced files will be retreived.
 
 ```
-mfsync get --request sha256sum1 sha256sum2 -- ./destination
+mfsync get file1.txt directory/file2.txt ./destination
 ```
-  * downloads files with the given sha256sums to given destination if available
-  * if no --request flag is set, all files are downloaded
+  * downloads files with the given filename to given destination if available
+  * if no filenames are given all files are downloaded
 
 ### mfsync sync
 'mfsync sync' is basically a combination of 'mfsync share' and 'mfsync get'. It announces all given files and also retreives all available files that are not stored locally already. Files that where retrieved are then also shared again.
