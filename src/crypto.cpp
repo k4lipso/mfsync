@@ -87,6 +87,7 @@ encryption_wrapper encryption_wrapper::create(
     SecByteBlock secret, std::string plain, size_t count,
     std::string arbitary_data /*= "" */) {
   encryption_wrapper result;
+  result.count = count;
   result.cipher_text.resize(plain.size());
   result.aad = std::move(arbitary_data);
 
@@ -284,6 +285,17 @@ std::optional<encryption_wrapper> crypto_handler::decrypt(
                                      get_count(pub_key));
 }
 
+void crypto_handler::set_count(const std::string& pub_key, size_t count) {
+  std::unique_lock lk{mutex_};
+  if (!trusted_keys_.contains(pub_key)) {
+    spdlog::error("set_count of non trusted key.");
+    return;
+  }
+
+  trusted_keys_.at(pub_key).count = count;
+}
+
+
 size_t crypto_handler::get_count(const std::string& pub_key) {
   std::unique_lock lk{mutex_};
   if (!trusted_keys_.contains(pub_key)) {
@@ -291,7 +303,6 @@ size_t crypto_handler::get_count(const std::string& pub_key) {
     return 0;
   }
 
-  // return ++trusted_keys_.at(pub_key).count;
-  return trusted_keys_.at(pub_key).count;
+  return trusted_keys_.at(pub_key).count++;
 }
 }  // namespace mfsync::crypto

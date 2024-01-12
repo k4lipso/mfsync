@@ -76,7 +76,7 @@ void client_encrypted_session<SocketType>::handle_read_encrypted_response(
   auto available =
       protocol::converter<mfsync::file_handler::available_files>::from_message(
           response_message, host_info_.public_key, crypto_handler_,
-          socket_.remote_endpoint());
+          socket_.remote_endpoint(), true);
 
   if (available.has_value()) {
     file_handler_.add_available_files(std::move(available.value()));

@@ -336,6 +336,31 @@ get_available_files_from_message(const std::string& message,
   return get_available_files_from_message(message, endpoint.address(), pub_key);
 }
 
+std::optional<size_t> get_count_from_message(const std::string& message)
+{
+  if(message.empty())
+  {
+    spdlog::debug("get_file_info_from_message on empty message");
+    return std::nullopt;
+  }
+
+  try
+  {
+    const auto j = get_json_from_message(message);
+
+    if(!j.has_value()) {
+      return std::nullopt;
+    }
+
+    return j.value().at("count").get<size_t>();
+  }
+  catch(nlohmann::json::parse_error& er)
+  {
+    spdlog::debug("Json Parse Error: {}", er.what());
+    return std::nullopt;
+  }
+}
+
 std::optional<file_handler::available_files>
 get_available_files_from_message(const std::string& message,
                                  const boost::asio::ip::address& address,

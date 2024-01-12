@@ -58,6 +58,7 @@ struct encryption_wrapper {
 
   std::vector<byte> cipher_text;
   std::array<byte, 16> mac;
+  size_t count;
   std::string aad;
 };
 struct key_count_pair {
@@ -88,6 +89,8 @@ class crypto_handler {
   std::optional<encryption_wrapper> decrypt(const std::string& pub_key,
                                             const encryption_wrapper& wrapper);
 
+  void set_count(const std::string& pub_key, size_t count);
+
  private:
   size_t get_count(const std::string& pub_key);
 
@@ -106,6 +109,7 @@ inline void to_json(nlohmann::json& j, const encryption_wrapper& file_info) {
   // TODO: this is super inefficient!
   j["cipher_text"] = file_info.cipher_text;
   j["mac"] = file_info.mac;
+  j["count"] = file_info.count;
   j["aad"] = file_info.aad;
 }
 
@@ -113,6 +117,7 @@ inline void from_json(const nlohmann::json& j, encryption_wrapper& file_info) {
   file_info.cipher_text = j.at("cipher_text").get<std::vector<byte>>();
   file_info.mac = j.at("mac").get<std::array<byte, 16>>();
   j.at("aad").get_to(file_info.aad);
+  j.at("count").get_to(file_info.count);
 }
 
 }  // namespace mfsync::crypto

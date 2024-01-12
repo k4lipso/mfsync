@@ -66,6 +66,8 @@ std::optional<std::string> get_decrypted_message(
 std::optional<std::string> get_decrypted_message(
     const std::string& message, crypto::crypto_handler& handler);
 
+std::optional<size_t> get_count_from_message(const std::string& message);
+
 std::optional<file_handler::available_files> get_available_files_from_message(
     const std::string& message, const boost::asio::ip::tcp::endpoint& endpoint,
     const std::string& pub_key = "");
@@ -191,13 +193,22 @@ class converter<mfsync::file_handler::available_files> {
   static std::optional<mfsync::file_handler::available_files> from_message(
       const std::string& buf, const std::string& pub_key,
       mfsync::crypto::crypto_handler& handler,
-      const boost::asio::ip::tcp::endpoint& address) {
+      const boost::asio::ip::tcp::endpoint& address, bool update_count = false) {
     if (mfsync::protocol::get_message_type({buf.data(), buf.size()}) ==
         mfsync::protocol::type::DENIED) {
       spdlog::debug("file list request got denied by host {}.", pub_key);
       return std::nullopt;
     }
 
+    if(update_count) {
+      const auto count = mfsync::protocol::get_count_from_message(buf);
+      if(count.has_value()) {
+          handler.set_count(pub_key, count.value());
+      } else
+      {
+          spdlog::debug("Could not read count from message");
+      }
+    }
     const auto decrypted_message =
         mfsync::protocol::get_decrypted_message(buf, pub_key, handler);
 
