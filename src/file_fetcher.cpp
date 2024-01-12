@@ -60,12 +60,12 @@ void file_fetcher::handle_receive_from(const boost::system::error_code& error,
     return;
   }
 
-  if (crypto_handler_.trust_key(host_info.value().public_key)) {
+  //if (crypto_handler_.trust_key(host_info.value().public_key)) {
     const auto session =
         std::make_shared<mfsync::filetransfer::client_encrypted_file_list>(
             io_context_, *file_handler_, crypto_handler_, host_info.value());
     session->start_request();
-  }
+  //}
 
   do_receive();
 }

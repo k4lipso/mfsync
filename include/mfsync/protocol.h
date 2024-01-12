@@ -31,6 +31,7 @@ constexpr std::string_view create_begin_transmission_message() {
 enum class type {
   NONE = 0,
   DENIED,
+  HANDSHAKE,
   FILE_LIST,
   FILE,
 };
@@ -39,6 +40,7 @@ type get_message_type(const std::string& msg);
 std::optional<nlohmann::json> get_json_from_message(const std::string& msg);
 
 std::string wrap_with_header(const std::string& msg);
+std::string create_handshake_message(const std::string& public_key, const std::string& salt);
 std::string create_file_list_message(const std::string& public_key);
 std::string create_file_message(const std::string& public_key,
                                 const std::string& msg);

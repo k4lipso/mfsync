@@ -32,6 +32,10 @@ type get_message_type(const std::string& msg)
     }
 
     const auto& type_string = j.at("type").get<std::string>();
+    if(type_string == "handshake")
+    {
+      return type::HANDSHAKE;
+    }
     if(type_string == "file_list")
     {
       return type::FILE_LIST;
@@ -93,6 +97,17 @@ std::string create_file_message(const std::string& public_key, const std::string
   j["version"] = protocol::VERSION;
   j["public_key"] = public_key;
   j["message"] = msg;
+
+  return wrap_with_header(j.dump());
+}
+
+std::string create_handshake_message(const std::string& public_key, const std::string& salt)
+{
+  nlohmann::json j;
+  j["type"] = "handshake";
+  j["version"] = protocol::VERSION;
+  j["public_key"] = public_key;
+  j["salt"] = salt;
 
   return wrap_with_header(j.dump());
 }

@@ -24,14 +24,17 @@ class server_session_base
   SocketType& get_socket();
   virtual void start() = 0;
   void read();
+  void read_handshake();
 
   void set_progress(progress_handler* progress) { progress_ = progress; }
 
  protected:
+  void handle_read_handshake(boost::system::error_code const& error,
+                             std::size_t bytes_transferred);
   void handle_read_header(boost::system::error_code const& error,
                           std::size_t bytes_transferred);
   void send_confirmation();
-  void respond_encrypted(const std::string& pub_key);
+  void respond_encrypted(const std::string& pub_key, const std::string& salt);
   void reply_with_error(const std::string& reason);
   void read_confirmation();
   void handle_read_confirmation(boost::system::error_code const& error,
@@ -41,6 +44,7 @@ class server_session_base
   SocketType socket_;
   mfsync::file_handler& file_handler_;
   mfsync::crypto::crypto_handler& crypto_handler_;
+  std::unique_ptr<mfsync::crypto::crypto_handler> derived_crypto_handler_;
   std::string message_;
   std::string public_key_;
   requested_file requested_;
