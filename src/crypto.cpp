@@ -7,6 +7,8 @@
 #include <cryptopp/hex.h>
 #include <cryptopp/osrng.h>
 #include <cryptopp/xed25519.h>
+#include <cryptopp/hkdf.h>
+#include <cryptopp/sha.h>
 
 #include "spdlog/spdlog.h"
 
@@ -72,7 +74,7 @@ key_pair key_pair::create() {
 }
 
 std::optional<SecByteBlock> key_pair::get_shared_secret(
-    SecByteBlock other_public_key) {
+    SecByteBlock other_public_key, SecByteBlock salt) {
   SecByteBlock shared_key(ecdh.AgreedValueLength());
 
   if (!ecdh.Agree(shared_key, private_key, other_public_key)) {
@@ -80,7 +82,25 @@ std::optional<SecByteBlock> key_pair::get_shared_secret(
     return std::nullopt;
   }
 
-  return shared_key;
+  const auto printKey = [](SecByteBlock key) {
+    std::string result;
+    HexEncoder encoder(new StringSink(result));
+    StringSource(key, key.size(), true,
+                 new Redirector(encoder));
+    spdlog::info(result);
+  };
+
+  if(&salt[0] == nullptr) {
+    return std::nullopt;
+  }
+
+  HKDF<SHA256> hkdf{};
+  SecByteBlock derived;
+  derived.resize(SHA256::DIGESTSIZE);
+  byte info[] = "KeyDerivation";
+  auto derived_size = hkdf.DeriveKey((byte*)&derived[0], derived.size(), shared_key, sizeof(shared_key), (byte*)&salt[0], salt.size(), info, strlen((const char*)info));
+
+  return derived;
 }
 
 encryption_wrapper encryption_wrapper::create(
@@ -136,18 +156,38 @@ bool crypto_handler::init(const std::filesystem::path& path) {
 }
 
 std::string crypto_handler::get_public_key() const {
+  return encode(key_pair_.public_key);
+}
+
+std::string crypto_handler::encode(SecByteBlock value) const {
   std::string result;
   HexEncoder encoder(new StringSink(result));
-  StringSource(key_pair_.public_key, key_pair_.public_key.size(), true,
+  StringSource(value, value.size(), true,
                new Redirector(encoder));
   return result;
 }
+
+SecByteBlock crypto_handler::decode(std::string value) const {
+  SecByteBlock decoded;
+
+  HexDecoder decoder;
+  decoder.Put((byte*)value.data(), value.size());
+  decoder.MessageEnd();
+  word64 size = decoder.MaxRetrievable();
+  if (size && size <= SIZE_MAX) {
+    decoded.resize(size);
+    decoder.Get((byte*)&decoded[0], decoded.size());
+  }
+
+  return decoded;
+}
+
 
 void crypto_handler::add_allowed_key(const std::string& pub_key) {
   allowed_keys_.push_back(std::move(pub_key));
 }
 
-bool crypto_handler::trust_key(std::string pub_key) {
+bool crypto_handler::trust_key(std::string pub_key, std::optional<std::string> salt /* = std::nullopt */) {
   if (!allowed_keys_.empty()) {
     if (std::none_of(allowed_keys_.begin(), allowed_keys_.end(),
                      [&pub_key](const auto& key) { return key == pub_key; })) {
@@ -160,18 +200,12 @@ bool crypto_handler::trust_key(std::string pub_key) {
     return true;
   }
 
-  SecByteBlock decoded;
-
-  HexDecoder decoder;
-  decoder.Put((byte*)pub_key.data(), pub_key.size());
-  decoder.MessageEnd();
-  word64 size = decoder.MaxRetrievable();
-  if (size && size <= SIZE_MAX) {
-    decoded.resize(size);
-    decoder.Get((byte*)&decoded[0], decoded.size());
+  if(!salt.has_value()) {
+    spdlog::debug("trust_key: No salt was given...");
+    return false;
   }
 
-  auto shared_secret = key_pair_.get_shared_secret(std::move(decoded));
+  auto shared_secret = key_pair_.get_shared_secret(decode(pub_key), decode(salt.value()));
 
   if (!shared_secret.has_value()) {
     spdlog::debug("Creating shared secret from pub key {} failed", pub_key);
@@ -181,6 +215,26 @@ bool crypto_handler::trust_key(std::string pub_key) {
   trusted_keys_[pub_key] =
       key_count_pair{.key = std::move(shared_secret.value())};
   return true;
+}
+
+std::unique_ptr<crypto_handler> crypto_handler::derive(const std::string& pub_key, const std::string& salt) {
+  auto result = std::make_unique<crypto_handler>();
+  result->key_pair_ = key_pair_;
+  result->trust_all_ = trust_all_;
+  result->allowed_keys_ = allowed_keys_;
+
+  spdlog::info("Derive key: {}, salt: {}", pub_key, salt);
+  result->trust_key(pub_key, salt);
+  return result;
+}
+
+SecByteBlock crypto_handler::generate_salt() const {
+  const unsigned int BLOCKSIZE = 16 * 8;
+  SecByteBlock salt( BLOCKSIZE );
+
+  CryptoPP::AutoSeededRandomPool rng;
+  rng.GenerateBlock( salt, salt.size() );
+  return salt;
 }
 
 std::optional<encryption_wrapper> crypto_handler::encrypt(
@@ -303,6 +357,7 @@ size_t crypto_handler::get_count(const std::string& pub_key) {
     return 0;
   }
 
+  spdlog::info(trusted_keys_.at(pub_key).count);
   return trusted_keys_.at(pub_key).count++;
 }
 }  // namespace mfsync::crypto

@@ -35,7 +35,7 @@ struct key_pair {
 
   static key_pair create(const std::filesystem::path& path);
   static key_pair create();
-  std::optional<SecByteBlock> get_shared_secret(SecByteBlock other_public_key);
+  std::optional<SecByteBlock> get_shared_secret(SecByteBlock other_public_key, SecByteBlock salt);
 
   x25519Wrapper ecdh;
   SecByteBlock private_key;
@@ -61,6 +61,7 @@ struct encryption_wrapper {
   size_t count;
   std::string aad;
 };
+
 struct key_count_pair {
   SecByteBlock key;
   size_t count = 0;
@@ -70,8 +71,14 @@ class crypto_handler {
  public:
   bool init(const std::filesystem::path& path);
   std::string get_public_key() const;
+  std::string encode(SecByteBlock value) const;
+  SecByteBlock decode(std::string value) const;
   void add_allowed_key(const std::string& pub_key);
-  bool trust_key(std::string pub_key);
+  bool trust_key(std::string pub_key, std::optional<std::string> salt = std::nullopt);
+
+  std::unique_ptr<crypto_handler> derive(const std::string& pub_key, const std::string& salt);
+
+  SecByteBlock generate_salt() const;
 
   std::optional<encryption_wrapper> encrypt(const std::string& pub_key,
                                             std::string plain,
@@ -95,8 +102,6 @@ class crypto_handler {
   size_t get_count(const std::string& pub_key);
 
   mutable std::mutex mutex_;
-  std::vector<size_t> count_vec_;
-
   key_pair key_pair_;
 
   bool trust_all_ = true;

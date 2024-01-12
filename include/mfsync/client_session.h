@@ -47,6 +47,8 @@ public:
   virtual ~client_encrypted_session() = default;
 
   void initialize_communication();
+  void read_handshake();
+  void handle_read_handshake(boost::system::error_code const &error, std::size_t bytes_transferred);
   void read_encrypted_response();
   void handle_read_encrypted_response(boost::system::error_code const &error, std::size_t bytes_transferred);
   void request_file_list();
@@ -56,6 +58,7 @@ protected:
   SocketType socket_;
   mfsync::file_handler& file_handler_;
   mfsync::crypto::crypto_handler& crypto_handler_;
+  std::unique_ptr<mfsync::crypto::crypto_handler> derived_crypto_handler_ = nullptr;
   mfsync::host_information host_info_;
   std::string message_;
   boost::asio::streambuf stream_buffer_;
@@ -90,6 +93,12 @@ public:
   SocketType& get_socket();
   void request_file();
 
+  void initialize_communication();
+  void read_handshake();
+  void handle_read_handshake(boost::system::error_code const &error, std::size_t bytes_transferred);
+  void read_encrypted_response();
+  void handle_read_encrypted_response(boost::system::error_code const &error, std::size_t bytes_transferred);
+
 protected:
   void read_file_request_response();
   void handle_read_file_request_response(boost::system::error_code const &error, std::size_t bytes_transferred);
@@ -104,6 +113,7 @@ protected:
   mfsync::concurrent::deque<available_file>& deque_;
   mfsync::file_handler& file_handler_;
   mfsync::crypto::crypto_handler& crypto_handler_;
+  std::unique_ptr<mfsync::crypto::crypto_handler> derived_crypto_handler_;
   std::string pub_key_;
   std::string message_;
   boost::asio::streambuf stream_buffer_;

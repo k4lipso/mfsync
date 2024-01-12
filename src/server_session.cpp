@@ -38,7 +38,7 @@ server_tls_session::server_tls_session(
   port_ = socket_.lowest_layer().local_endpoint().port();
 }
 
-void server_session::start() { read(); }
+void server_session::start() { read_handshake(); }
 
 void server_tls_session::start() { do_handshake(); }
 
@@ -56,6 +56,16 @@ void server_tls_session::do_handshake() {
 }
 
 template <typename SocketType>
+void server_session_base<SocketType>::read_handshake() {
+  boost::asio::async_read_until(
+      socket_, stream_buffer_, mfsync::protocol::MFSYNC_HEADER_END,
+      [me = this->shared_from_this()](boost::system::error_code const& error,
+                                      std::size_t bytes_transferred) {
+        me->handle_read_handshake(error, bytes_transferred);
+      });
+}
+
+template <typename SocketType>
 void server_session_base<SocketType>::read() {
   boost::asio::async_read_until(
       socket_, stream_buffer_, mfsync::protocol::MFSYNC_HEADER_END,
@@ -63,6 +73,41 @@ void server_session_base<SocketType>::read() {
                                       std::size_t bytes_transferred) {
         me->handle_read_header(error, bytes_transferred);
       });
+}
+
+template <typename SocketType>
+void server_session_base<SocketType>::handle_read_handshake(
+    boost::system::error_code const& error, std::size_t bytes_transferred) {
+  if (error) {
+    spdlog::debug("Error on handle_read_header: {}", error.message());
+    return;
+  }
+
+  stream_buffer_.commit(bytes_transferred);
+  std::istream is(&stream_buffer_);
+  std::string message(std::istreambuf_iterator<char>(is), {});
+  spdlog::debug("Received header: {}", message);
+
+  const auto type = protocol::get_message_type(message);
+
+  if (type != protocol::type::HANDSHAKE) {
+    spdlog::debug("received request with wrong type, expected HANDSHAKE, got: {}",
+                  static_cast<int>(type));
+    return;
+  }
+
+  auto optional_j = protocol::get_json_from_message(message);
+
+  if (!optional_j.has_value()) {
+    return;
+  }
+
+  const auto& j = optional_j.value();
+  const auto pub_key = j.at("public_key").get<std::string>();
+  const auto salt = j.at("salt").get<std::string>();
+  spdlog::debug("received init message: {}", pub_key);
+  respond_encrypted(pub_key, salt);
+  return;
 }
 
 template <typename SocketType>
@@ -89,8 +134,19 @@ void server_session_base<SocketType>::handle_read_header(
 
     const auto& j = optional_j.value();
     const auto pub_key = j.at("public_key").get<std::string>();
-    spdlog::debug("received init message: {}", pub_key);
-    respond_encrypted(pub_key);
+    message_ = protocol::converter<file_handler::available_files>::to_message(
+        file_handler_, port_, pub_key, *derived_crypto_handler_.get());
+
+    spdlog::debug("Sending response: {}", message_);
+    async_write(socket_, boost::asio::buffer(message_.data(), message_.size()),
+                [me = this->shared_from_this()](
+                    boost::system::error_code const& ec, std::size_t) {
+                  if (!ec) {
+                    spdlog::debug("Done sending response");
+                  } else {
+                    spdlog::debug("async write failed: {}", ec.message());
+                  }
+                });
     return;
   }
 
@@ -101,7 +157,7 @@ void server_session_base<SocketType>::handle_read_header(
   }
 
   const auto result = protocol::converter<requested_file>::from_message(
-      message, crypto_handler_);
+      message, *derived_crypto_handler_.get());
   if (!result.has_value()) {
     spdlog::debug("Couldnt create requested_file from message: {}", message);
     return;
@@ -120,9 +176,16 @@ void server_session_base<SocketType>::handle_read_header(
 
 template <typename SocketType>
 void server_session_base<SocketType>::respond_encrypted(
-    const std::string& pub_key) {
-  message_ = protocol::converter<file_handler::available_files>::to_message(
-      file_handler_, port_, pub_key, crypto_handler_);
+    const std::string& pub_key,
+    const std::string& salt) {
+  derived_crypto_handler_ = crypto_handler_.derive(pub_key, salt);
+  if(!derived_crypto_handler_) {
+      spdlog::error("Could not derive cryptohandler. key: {}, salt: {}", pub_key, salt);
+      return;
+  }
+
+  message_ = protocol::converter<bool>::to_message(
+      true, pub_key, *derived_crypto_handler_.get());
 
   spdlog::debug("Sending response: {}", message_);
   async_write(socket_, boost::asio::buffer(message_.data(), message_.size()),
@@ -130,7 +193,7 @@ void server_session_base<SocketType>::respond_encrypted(
                   boost::system::error_code const& ec, std::size_t) {
                 if (!ec) {
                   spdlog::debug("Done sending response");
-                  // me->read_confirmation();
+                  me->read();
                 } else {
                   spdlog::debug("async write failed: {}", ec.message());
                 }
@@ -140,7 +203,7 @@ void server_session_base<SocketType>::respond_encrypted(
 template <typename SocketType>
 void server_session_base<SocketType>::send_confirmation() {
   message_ =
-      protocol::converter<bool>::to_message(true, public_key_, crypto_handler_);
+      protocol::converter<bool>::to_message(true, public_key_, *derived_crypto_handler_.get());
 
   spdlog::debug("Sending response: {}", message_);
   async_write(socket_, boost::asio::buffer(message_.data(), message_.size()),
@@ -194,7 +257,7 @@ void server_session_base<SocketType>::handle_read_confirmation(
                       boost::asio::buffers_begin(bufs) + bytes_transferred);
 
   const auto got_accepted = protocol::converter<bool>::from_message(
-      message, public_key_, crypto_handler_);
+      message, public_key_, *derived_crypto_handler_.get());
 
   if (!got_accepted.has_value() || !got_accepted.value()) {
     spdlog::debug("begin transmission wasnt confirmed. aborting");
@@ -241,7 +304,7 @@ void server_session_base<SocketType>::write_file() {
   // ifstream_.read(reinterpret_cast<char*>(writebuf_.data()),
   // writebuf_.size());
   writebuf_.clear();
-  crypto_handler_.encrypt_file_to_buf(public_key_, ifstream_,
+  derived_crypto_handler_->encrypt_file_to_buf(public_key_, ifstream_,
                                       requested_.chunksize, writebuf_);
 
   bar_->bytes_transferred = ifstream_.tellg();
