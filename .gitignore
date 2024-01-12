@@ -1,4 +1,5 @@
 *.swp
+debug
 token
 notes.*
 result
