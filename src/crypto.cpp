@@ -215,7 +215,7 @@ std::unique_ptr<crypto_handler> crypto_handler::derive(const std::string& pub_ke
   result->trust_all_ = trust_all_;
   result->allowed_keys_ = allowed_keys_;
 
-  spdlog::info("Derive key: {}, salt: {}", pub_key, salt);
+  spdlog::trace("Derive key: {}, salt: {}", pub_key, salt);
   result->trust_key(pub_key, salt);
   return result;
 }
@@ -348,7 +348,6 @@ size_t crypto_handler::get_count(const std::string& pub_key) {
     return 0;
   }
 
-  spdlog::info(trusted_keys_.at(pub_key).count);
   return trusted_keys_.at(pub_key).count++;
 }
 }  // namespace mfsync::crypto
