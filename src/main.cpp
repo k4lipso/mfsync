@@ -7,6 +7,7 @@
 #include <memory>
 #include <thread>
 #include <utility>
+#include <nlohmann/json.hpp>
 
 #include "mfsync/crypto.h"
 #include "mfsync/file_fetcher.h"
@@ -67,7 +68,9 @@ int main(int argc, char** argv) {
       "port 8000")("concurrent_downloads,c", po::value<size_t>(),
                    "maximum concurrent downloads allowed. default is 3")(
       "key-file", po::value<std::string>(),
-      "Manual specify key to use. key.bin is default")(
+      "Manual specify key to use. ~/.mfsync/key.bin is default")(
+      "config", po::value<std::string>(),
+      "Manual specify config file to use. ~/.mfsync/config.json is default")(
       "multicast-address", po::value<std::string>(),
       "Manual specify multicast address. If not specified 239.255.0.1 is "
       "used as default")("multicast-port,m", po::value<unsigned short>(),
@@ -130,10 +133,26 @@ int main(int argc, char** argv) {
       return 0;
     }
 
-    std::string key_file{"key.bin"};
+    const auto home_directory = std::getenv("HOME");
+
+    if(home_directory == nullptr && !vm.count("key-file")) {
+      spdlog::error("Could not determine home directroy. Please specify a key file using --key-file");
+      return -1;
+    }
+
+    std::filesystem::path config_root{static_cast<std::filesystem::path>(home_directory) / ".mfsync"};
+    std::filesystem::path key_file = config_root / "key.bin";
 
     if (vm.count("key-file")) {
       key_file = vm["key-file"].as<std::string>();
+    } else {
+      if(!std::filesystem::exists(config_root)) {
+        std::error_code ec;
+        if(!std::filesystem::create_directory(config_root, ec)) {
+          spdlog::error("Error creating directory {}: {}", config_root.string(), ec.message());
+          return -1;
+        }
+      }
     }
 
     auto crypto_handler = std::make_unique<mfsync::crypto::crypto_handler>();
@@ -152,8 +171,36 @@ int main(int argc, char** argv) {
       return 0;
     }
 
+    spdlog::debug("current public key: {}", public_key);
 
-    spdlog::debug("{}", public_key);
+    std::filesystem::path config_file{ config_root / "config.json" };
+    if(vm.count("config")){
+      config_file = vm["config"].as<std::string>();
+      if(!std::filesystem::exists(config_file)) {
+        spdlog::error("Config file was specified but does not exists at {}", config_file.string());
+        return -1;
+      }
+    }
+
+    if(std::filesystem::exists(config_file)) {
+      try
+      {
+        std::ifstream ifs(config_file);
+        auto j = nlohmann::json::parse(ifs);
+
+        if(j.contains("trustedKeys")) {
+          const auto trusted_keys = j.at("trustedKeys").get<std::vector<std::string>>();
+          for (const auto& key : trusted_keys) {
+            crypto_handler->add_allowed_key(key);
+          }
+        }
+      }
+      catch(std::exception& er)
+      {
+        spdlog::info("Json Error while parsing config file at {}: {}", config_file.string(), er.what());
+        return -1;
+      }
+    }
 
     if (vm.count("trusted-keys")) {
       const auto& trusted = vm["trusted-keys"].as<std::vector<std::string>>();
