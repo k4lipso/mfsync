@@ -74,6 +74,7 @@ class crypto_handler {
   std::string encode(SecByteBlock value) const;
   SecByteBlock decode(std::string value) const;
   void add_allowed_key(const std::string& pub_key);
+  bool is_allowed(const std::string& pub_key) const;
   bool trust_key(std::string pub_key, std::optional<std::string> salt = std::nullopt);
 
   std::unique_ptr<crypto_handler> derive(const std::string& pub_key, const std::string& salt);

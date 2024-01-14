@@ -179,6 +179,19 @@ void crypto_handler::add_allowed_key(const std::string& pub_key) {
   allowed_keys_.push_back(std::move(pub_key));
 }
 
+bool crypto_handler::is_allowed(const std::string& pub_key) const {
+  if(allowed_keys_.empty()){
+    return true;
+  }
+
+  if (std::none_of(allowed_keys_.begin(), allowed_keys_.end(),
+                   [&pub_key](const auto& key) { return key == pub_key; })) {
+    return false;
+  }
+
+  return true;
+}
+
 bool crypto_handler::trust_key(std::string pub_key, std::optional<std::string> salt /* = std::nullopt */) {
   if (!allowed_keys_.empty()) {
     if (std::none_of(allowed_keys_.begin(), allowed_keys_.end(),
