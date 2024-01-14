@@ -14,8 +14,6 @@ https://github.com/k4lipso/mfsync/assets/19481640/a570f897-7f79-4415-ac4b-6241f5
 
 mfsync can operate in four different modes, each fullfilling a different purpose. The four modes are 'share', 'fetch', 'get' and 'sync'. The modes are described below.
 
-https://github.com/k4lipso/mfsync/assets/19481640/a570f897-7f79-4415-ac4b-6241f5da3b21
-
 ### Motivation
 
 The motivation to write this tool is to have an easy way to backup files on multiple hosts (without the need to know any routing information or ip address) in a volatile network environment like an ad-hoc network. A file that is shared once by a host will distribute through the network even if the original host is gone. This way it is very hard to loose a file, even if lots of hosts will be removed. The mode 'mfsync sync' should serve this purpose and is described below.
