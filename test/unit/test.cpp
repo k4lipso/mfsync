@@ -33,7 +33,7 @@ TEST_CASE("storage test", "[file_handler]") {
     REQUIRE(handler.is_stored("NOT STORED") == false);
 
     auto available = mfsync::available_file{
-        some_file_info, boost::asio::ip::make_address("8.23.42.17"), 1337};
+        some_file_info, boost::asio::ip::make_address("8.23.42.17"), 1337, ""};
 
     handler.add_available_file(available);
     REQUIRE(!handler.is_available(available.file_info.file_name));
@@ -167,16 +167,16 @@ TEST_CASE("request files by directory test", "[file_receive_handler]") {
 
   //first create and add some available files:
   mfsync::file_handler::available_files availables{{
-    { .file_info = { .file_name = "test1.txt" }, .source_address = {} },
-    { .file_info = { .file_name = "test2.txt" }, .source_address = {} },
-    { .file_info = { .file_name = "folder1/test2.txt" }, .source_address = {} },
-    { .file_info = { .file_name = "folder2/test2.txt" }, .source_address = {} },
-    { .file_info = { .file_name = "folder2/test3.txt" }, .source_address = {} },
-    { .file_info = { .file_name = "folder2/test4.txt" }, .source_address = {} },
-    { .file_info = { .file_name = "folder1/subfolder1/test1.txt" }, .source_address = {} },
-    { .file_info = { .file_name = "folder1/subfolder2/test1.txt" }, .source_address = {} },
-    { .file_info = { .file_name = "folder1/subfolder2/test2.txt" }, .source_address = {} },
-    { .file_info = { .file_name = "folder1/subfolder2/test3.txt" }, .source_address = {} }
+    { .file_info = { .file_name = "test1.txt" }, .source_address = {}, .source_port = 1336, .public_key = "" },
+    { .file_info = { .file_name = "test2.txt" }, .source_address = {}, .source_port = 1336, .public_key = "" },
+    { .file_info = { .file_name = "folder1/test2.txt" }, .source_address = {}, .source_port = 1336, .public_key = "" },
+    { .file_info = { .file_name = "folder2/test2.txt" }, .source_address = {}, .source_port = 1336, .public_key = "" },
+    { .file_info = { .file_name = "folder2/test3.txt" }, .source_address = {}, .source_port = 1336, .public_key = "" },
+    { .file_info = { .file_name = "folder2/test4.txt" }, .source_address = {}, .source_port = 1336, .public_key = "" },
+    { .file_info = { .file_name = "folder1/subfolder1/test1.txt" }, .source_address = {}, .source_port = 1336, .public_key = "" },
+    { .file_info = { .file_name = "folder1/subfolder2/test1.txt" }, .source_address = {}, .source_port = 1336, .public_key = "" },
+    { .file_info = { .file_name = "folder1/subfolder2/test2.txt" }, .source_address = {}, .source_port = 1336, .public_key = "" },
+    { .file_info = { .file_name = "folder1/subfolder2/test3.txt" }, .source_address = {}, .source_port = 1336, .public_key = "" }
   }};
 
   file_handler.add_available_files(std::move(availables));

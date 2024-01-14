@@ -82,14 +82,6 @@ std::optional<SecByteBlock> key_pair::get_shared_secret(
     return std::nullopt;
   }
 
-  const auto printKey = [](SecByteBlock key) {
-    std::string result;
-    HexEncoder encoder(new StringSink(result));
-    StringSource(key, key.size(), true,
-                 new Redirector(encoder));
-    spdlog::info(result);
-  };
-
   if(&salt[0] == nullptr) {
     return std::nullopt;
   }
@@ -98,7 +90,7 @@ std::optional<SecByteBlock> key_pair::get_shared_secret(
   SecByteBlock derived;
   derived.resize(SHA256::DIGESTSIZE);
   byte info[] = "KeyDerivation";
-  auto derived_size = hkdf.DeriveKey((byte*)&derived[0], derived.size(), shared_key, sizeof(shared_key), (byte*)&salt[0], salt.size(), info, strlen((const char*)info));
+  hkdf.DeriveKey((byte*)&derived[0], derived.size(), shared_key, sizeof(shared_key), (byte*)&salt[0], salt.size(), info, strlen((const char*)info));
 
   return derived;
 }
@@ -301,7 +293,6 @@ void crypto_handler::decrypt_file_to_buf(const std::string& pub_key,
     return;
   }
 
-  const int TAG_SIZE = -1;
   static auto IV = encryption_wrapper::get_nonce_from_count(get_count(pub_key));
 
   auto shared = trusted_keys_.at(pub_key);

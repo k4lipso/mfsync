@@ -349,8 +349,6 @@ namespace mfsync
       if(bar_ == nullptr)
       {
         using std::filesystem::directory_iterator;
-        using fp = bool (*)( const std::filesystem::path&);
-
         const auto is_reqular_and_no_tmp_file = [this](const std::filesystem::path& path)
         {
           return std::filesystem::is_regular_file(path) && !is_tmp_file(path);

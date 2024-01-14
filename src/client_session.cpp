@@ -567,9 +567,6 @@ void client_session_base<SocketType>::handle_read_file_chunk(
   //                 bytes_written_to_requested_);
   bytes_written_to_requested_ += bytes_transferred;
 
-  const auto end = ofstream_.get_ofstream().eof();
-
-  [[maybe_unused]] const auto strmsize = ofstream_.tellp();
   if (ofstream_.tellp() <
       static_cast<std::streamsize>(requested_.file_info.size)) {
     bar_->bytes_transferred = bytes_written_to_requested_;

@@ -34,8 +34,8 @@ namespace mfsync::multicast
     boost::asio::ip::udp::socket socket_;
     boost::asio::deadline_timer timer_;
     std::string message_;
-    std::string public_key_;
     unsigned short port_;
     file_handler& file_handler_;
+    std::string public_key_;
   };
 } //closing namespace mfsync::multicast
