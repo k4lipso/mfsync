@@ -22,7 +22,7 @@ constexpr std::string_view MFSYNC_HEADER_END = "<MFSYNC_HEADER_END>";
 constexpr auto MFSYNC_HEADER_SIZE =
     MFSYNC_HEADER_BEGIN.size() + MFSYNC_HEADER_END.size();
 constexpr auto MFSYNC_LOG_PREFIX = "";
-constexpr auto VERSION = "0.1.0";
+constexpr auto VERSION = "0.2.0";
 
 constexpr std::string_view create_begin_transmission_message() {
   return "<MFSYNC_HEADER_BEGIN>BEGIN_TRANSMISSION<MFSYNC_HEADER_END>";
